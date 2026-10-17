@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.qu32-private/
+.env
+mobile/.expo/
+mobile/android/
+mobile/ios/

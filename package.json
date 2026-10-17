@@ -1,0 +1,18 @@
+{
+  "name": "qu32-remote",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "QU32 Secure Remote: Allen & Heath Qu-32 phone control. SDK, authenticated gateway, Expo mobile app.",
+  "scripts": {
+    "build": "tsc -p sdk && tsc -p gateway",
+    "test": "tsc -p sdk && vitest run",
+    "start:gateway": "node gateway/dist/main.js",
+    "pack:sdk": "tsc -p sdk && cd sdk && npm pack --pack-destination ../dist-packages"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

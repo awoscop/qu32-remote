@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "QU32 Remote",
+    "slug": "qu32-remote",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B1421",
+    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#0B1421" },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.qu32.remote",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "QU32 Remote connects to your sound gateway on the local network to control the mixer."
+      }
+    },
+    "android": {
+      "package": "app.qu32.remote",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1421",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "./plugins/withUserCertificateTrust.js"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@qu32/sdk",
+  "version": "0.1.0",
+  "description": "Client SDK and Qu MIDI protocol library for QU32 Secure Remote (Allen & Heath Qu-32).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./protocol": { "types": "./dist/protocol/index.d.ts", "default": "./dist/protocol/index.js" }
+  },
+  "files": ["dist", "README.md"],
+  "sideEffects": false,
+  "license": "UNLICENSED",
+  "scripts": { "build": "tsc -p tsconfig.json" }
+}
