@@ -40,7 +40,7 @@ export function filterSnapshot(user: User, m: MixerSnapshot): MixerSnapshot {
     const info = stripInfo(s.address);
     if (info?.isSendSource) {
       strips.push({ ...s, fader: null, muted: null });
-      for (const id of [NRPN_ID.sendLevel, ...(bus.stereo ? [NRPN_ID.pan] : [])]) {
+      for (const id of [NRPN_ID.sendLevel, NRPN_ID.mixAssign, ...(bus.stereo ? [NRPN_ID.pan] : [])]) {
         const k = paramKey(s.address, id, bus.busIndex);
         if (k in m.params) params[k] = m.params[k]!;
       }

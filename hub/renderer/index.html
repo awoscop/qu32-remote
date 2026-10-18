@@ -84,10 +84,13 @@
       <button id="talk" class="talk" disabled>Hold to talk</button>
       <span id="talkMsg" class="muted">Hold the button (or the space bar). Release to stop. Never stays on longer than 60 seconds.</span>
     </div>
+    <p class="muted">Talk to one monitor with the button on its card, or to several with the buttons above. Two ways to supply your voice:
+      <b>desk microphone</b> (plug a mic into the channel chosen here, leave the PC microphone "Not set" under Audio) or
+      <b>PC microphone</b> (choose a mic and the Qu-32 USB return under Audio).</p>
     <details>
       <summary>One-time desk setup for talkback</summary>
       <ol class="muted">
-        <li>Pick a spare input channel (default CH 32). Set its input source to USB and its USB channel to the same number as "USB return channel" above.</li>
+        <li>Pick a spare input channel (default CH 32). Desk microphone: plug the mic into that channel's preamp. PC microphone: set its input source to USB and its USB channel to the same number as "USB return channel" above.</li>
         <li>Unmute it, fader at 0 dB, and switch off its LR assignment so talkback never reaches the main mix.</li>
         <li>Leave its sends at minus infinity. This app raises them only to the selected mixes while you hold the button, and sets them back to minus infinity on release.</li>
         <li>Do not use that channel for anything else: release always resets all of its monitor sends.</li>

@@ -43,9 +43,9 @@ $("tbStrip").onchange = () => window.hub.setTalkback({ strip: Number($("tbStrip"
 $("tbLevel").onchange = () => window.hub.setTalkback({ level: Number($("tbLevel").value) });
 
 // ------------------------------------------------------------ talkback
-async function talkStart() {
+async function talkStart(only) {
   if (talking) return;
-  const buses = [...tbSelected];
+  const buses = only ? [only] : [...tbSelected];
   if (!buses.length) { $("talkMsg").textContent = "Select at least one monitor to talk to."; return; }
   talking = true; $("talk").classList.add("live"); $("talk").textContent = "TALKING...";
   const r = await window.hub.talk(true, buses.map((id) => id - 1));
@@ -57,7 +57,7 @@ async function talkStop() {
   await window.hub.talk(false, []);
 }
 const tb = $("talk");
-tb.addEventListener("mousedown", talkStart);
+tb.addEventListener("mousedown", () => talkStart());
 tb.addEventListener("touchstart", (e) => { e.preventDefault(); talkStart(); }, { passive: false });
 for (const ev of ["mouseup", "mouseleave", "touchend", "touchcancel", "blur"]) tb.addEventListener(ev, talkStop);
 window.addEventListener("blur", talkStop);
@@ -111,8 +111,17 @@ function makeCard(s) {
   r.usb = el("input", { type: "number", min: 1, max: 32, ariaLabel: "First USB channel" });
   r.usb.onchange = () => guard(window.hub.updateSlot(s.id, { usbChannel: Number(r.usb.value) }));
   r.usbLabel = el("span", {}, "USB ch");
+  r.showAll = el("input", { type: "checkbox", ariaLabel: "Show all channels" });
+  r.showAll.onchange = () => guard(window.hub.updateSlot(s.id, { showAll: r.showAll.checked }));
+  r.talk = el("button", { className: "small", textContent: "Hold to talk to this mix" });
+  const go = () => talkStart(s.id), stop = () => talkStop();
+  r.talk.addEventListener("mousedown", go);
+  r.talk.addEventListener("touchstart", (e) => { e.preventDefault(); go(); }, { passive: false });
+  for (const ev of ["mouseup", "mouseleave", "touchend", "touchcancel"]) r.talk.addEventListener(ev, stop);
   r.root.append(r.name, r.img, r.url, el("div", { className: "row" }, r.copy, r.regen), r.status, r.meter,
-    el("div", { className: "opts" }, "Max level", r.ceiling, r.usbLabel, r.usb));
+    el("div", { className: "opts" }, "Max level", r.ceiling, r.usbLabel, r.usb),
+    el("label", { className: "inline opts", title: "Off: the phone shows only the channels you have sent to this mix" }, r.showAll, "Show all channels"),
+    r.talk);
   return r;
 }
 
@@ -135,6 +144,8 @@ function renderSlots(st) {
     r.meterI.style.width = `${Math.round(s.level * 100)}%`;
     if (!focused(r.ceiling)) r.ceiling.value = String(s.ceiling);
     if (!focused(r.usb)) r.usb.value = s.usbChannel;
+    r.showAll.checked = !!s.showAll;
+    r.talk.disabled = st.mixer.phase !== "ready";
     r.usbLabel.textContent = s.stereo ? "USB ch (L, R=+1)" : "USB ch";
   }
   $("noSlots").hidden = st.slots.length > 0;

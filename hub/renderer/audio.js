@@ -16,7 +16,7 @@ let missing = [];
 let lastError = null;
 
 // talkback
-let tbCtx = null, tbStream = null, tbGate = null, tbError = null, tbTalking = false;
+let tbCtx = null, tbStream = null, tbGate = null, tbError = null, tbTalking = false, tbConfigured = false;
 
 const audioConstraints = (deviceId, channels) => ({
   audio: Object.assign(
@@ -102,6 +102,7 @@ async function configure({ inputId, outputId, micId, returnChannel, mapping }) {
 
 async function configureTalkback({ outputId, micId, returnChannel }) {
   tbError = null;
+  tbConfigured = !!(micId || outputId);
   try {
     if (tbStream) tbStream.getTracks().forEach((t) => t.stop());
     if (tbCtx) { await tbCtx.close().catch(() => {}); }
@@ -132,7 +133,12 @@ async function configureTalkback({ outputId, micId, returnChannel }) {
 
 function talk({ on }) {
   tbTalking = !!on;
-  if (!tbGate) { if (on) throw new Error(tbError || "Talkback microphone / USB return is not configured. Choose them under Audio and press Apply."); return true; }
+  if (!tbGate) {
+    // Desk-microphone mode: no PC mic / USB return configured, so there is no audio to gate here.
+    // The desk channel's sends (raised by the hub) are what carry the voice to the mixes.
+    if (on && tbConfigured) throw new Error(tbError || "The talkback microphone or USB return could not be opened. Check Audio and press Apply.");
+    return true;
+  }
   tbGate.gain.setTargetAtTime(on ? 1 : 0, tbCtx.currentTime, 0.01);
   return true;
 }

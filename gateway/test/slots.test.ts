@@ -101,6 +101,19 @@ describe("QR slots", () => {
     expect(st.json.mixer.host).toBe("");
   });
 
+  it("exposes mix-assignment so the page can show only inputs sent to this mix", async () => {
+    const j = await join(slots.get(2)!.token);
+    expect(j.json.slot.showAll).toBe(false);
+    const st = await call(musBase, "GET", "/api/state?since=-1", undefined, j.json.token);
+    const p = st.json.mixer.params as Record<string, number>;
+    expect(p["32:85:1"]).toBe(1); // CH 1 assigned to Mix 2
+    expect(p["35:85:1"]).toBe(0); // CH 4 not assigned
+    expect(p["32:85:0"]).toBeUndefined(); // never another mix
+    slots.update(2, { showAll: true });
+    expect((await join(slots.get(2)!.token)).json.slot.showAll).toBe(true);
+    slots.update(2, { showAll: false });
+  });
+
   it("clamps sends to the slot's level ceiling", async () => {
     slots.update(1, { ceiling: 0x40 });
     const j = await join(slots.get(1)!.token);

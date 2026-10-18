@@ -17,6 +17,8 @@ export interface Slot {
   ceiling: number;
   /** First USB capture channel (1-based) carrying this mix. Stereo mixes use channel and channel+1. */
   usbChannel: number;
+  /** Show every channel on the musician's page, not just the ones the engineer assigned to their mix. */
+  showAll: boolean;
 }
 
 interface Persisted {
@@ -49,9 +51,10 @@ export class Slots {
     this.data = d ?? { count: 0, slots: [] };
     for (let id = 1; id <= MAX_SLOTS; id++) {
       if (!this.data.slots.find((s) => s.id === id)) {
-        this.data.slots.push({ id, name: MONITOR_BUSES[id - 1]!.name, token: Slots.newToken(), enabled: true, ceiling: 0x72, usbChannel: defaultUsb(id) });
+        this.data.slots.push({ id, name: MONITOR_BUSES[id - 1]!.name, token: Slots.newToken(), enabled: true, ceiling: 0x72, usbChannel: defaultUsb(id), showAll: false });
       }
     }
+    for (const s of this.data.slots) if (typeof s.showAll !== "boolean") s.showAll = false;
     this.data.slots.sort((a, b) => a.id - b.id);
     auth.virtualCheck = (u) => this.isValidUser(u);
     this.save();
@@ -81,7 +84,7 @@ export class Slots {
     this.save();
   }
 
-  update(id: number, patch: { name?: unknown; enabled?: unknown; ceiling?: unknown; usbChannel?: unknown }): Slot {
+  update(id: number, patch: { name?: unknown; enabled?: unknown; ceiling?: unknown; usbChannel?: unknown; showAll?: unknown }): Slot {
     const s = this.get(id);
     if (!s) throw new RangeError("No such slot");
     if (patch.name !== undefined) {
@@ -92,6 +95,10 @@ export class Slots {
       if (typeof patch.enabled !== "boolean") throw new RangeError("enabled must be boolean");
       s.enabled = patch.enabled;
       if (!s.enabled) this.auth.revoke(slotUsername(id));
+    }
+    if (patch.showAll !== undefined) {
+      if (typeof patch.showAll !== "boolean") throw new RangeError("showAll must be boolean");
+      s.showAll = patch.showAll;
     }
     if (patch.ceiling !== undefined) {
       if (!Number.isInteger(patch.ceiling) || (patch.ceiling as number) < 0 || (patch.ceiling as number) > 127) throw new RangeError("ceiling must be 0..127");

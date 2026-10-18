@@ -147,7 +147,7 @@ describe("gateway with simulated Qu-32", () => {
       for (const k of Object.keys(m.params)) {
         const [ch, id, vx] = k.split(":").map(Number);
         const isOwnMaster = ch === 0x64 && id === 0x17;
-        const isOwnSend = (id === 0x20 || id === 0x16) && vx === 4;
+        const isOwnSend = (id === 0x20 || id === 0x16 || id === 0x55) && vx === 4;
         expect(isOwnMaster || isOwnSend).toBe(true);
       }
       expect(m.strips.filter((s) => s.address >= 0x20 && s.address < 0x40).every((s) => s.fader === null && s.muted === null)).toBe(true);

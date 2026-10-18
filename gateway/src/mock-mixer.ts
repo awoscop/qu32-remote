@@ -68,7 +68,11 @@ export class MockQu {
       s.write(Buffer.from([...h, 0x11, this.boxId, 1, 9, 0xf7]));
       for (const st of STRIPS.filter((x) => x.family === "input").slice(0, 8)) {
         s.write(Buffer.from(fader(this.n, st.address, 0x62)));
-        for (let bus = 0; bus <= 6; bus++) s.write(Buffer.from(this.nrpnBytes(st.address, NRPN_ID.sendLevel, 0x40, bus)));
+        for (let bus = 0; bus <= 6; bus++) {
+          s.write(Buffer.from(this.nrpnBytes(st.address, NRPN_ID.sendLevel, 0x40, bus)));
+          // channels 1-3 are assigned to every mix, the rest are not
+          s.write(Buffer.from(this.nrpnBytes(st.address, NRPN_ID.mixAssign, st.address <= 0x22 ? 1 : 0, bus)));
+        }
       }
       for (let bus = 0; bus <= 6; bus++) s.write(Buffer.from(fader(this.n, 0x60 + bus, 0x62)));
       s.write(Buffer.from([...h, 0x14, 0xf7]));

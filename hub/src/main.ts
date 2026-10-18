@@ -132,7 +132,7 @@ async function uiState() {
     const bus = MONITOR_BUSES[s.id - 1]!;
     const url = `${base}/m/${s.token}`;
     return {
-      id: s.id, name: s.name, enabled: s.enabled, ceiling: s.ceiling, usbChannel: s.usbChannel,
+      id: s.id, name: s.name, enabled: s.enabled, ceiling: s.ceiling, usbChannel: s.usbChannel, showAll: s.showAll,
       bus: bus.name, stereo: bus.stereo, url, qr: lanIp ? await qr(url) : "",
       connected: slots.connected(s.id), streaming: !!engineStatus.streaming[s.id], level: engineStatus.levels[s.id] ?? 0,
     };

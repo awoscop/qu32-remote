@@ -48,6 +48,7 @@
     <button class="primary" id="listen">Start listening</button>
     <div class="meter" id="meterwrap" hidden><i id="meter"></i></div>
     <div class="note" id="audionote">Plug in your earbuds, then tap to hear your mix.</div>
+    <div class="note" id="lat" hidden></div>
     <audio id="player" playsinline autoplay></audio>
   </div>
 
@@ -144,12 +145,24 @@
     return c;
   }
 
+  // Only the channels the engineer has sent to this mix (Qu "mix assign"), unless the engineer chose "show all".
+  // If the desk never reported assignments, fall back to channels with a send level above minus infinity.
+  function visibleSources(m) {
+    const bus = slot.busIndex, masterAddr = 0x60 + bus;
+    const rank = (a) => (a >= 0x20 && a <= 0x42 ? 0 : 1);
+    const all = m.strips.filter((s) => s.address !== masterAddr).sort((a, b) => rank(a.address) - rank(b.address) || a.address - b.address);
+    if (slot.showAll) return all;
+    const assigned = (s) => m.params[s.address + ":85:" + bus];
+    if (all.some((s) => assigned(s) !== undefined)) return all.filter((s) => assigned(s) === 1);
+    const withLevel = all.filter((s) => (m.params[s.address + ":32:" + bus] || 0) > 0);
+    return withLevel.length ? withLevel : all;
+  }
+
   let builtFor = "";
   function build() {
     const m = state.mixer, bus = slot.busIndex, stereo = slot.stereo;
     const masterAddr = 0x60 + bus;
-    const rank = (a) => (a >= 0x20 && a <= 0x42 ? 0 : 1);
-    const sources = m.strips.filter((s) => s.address !== masterAddr).sort((a, b) => rank(a.address) - rank(b.address) || a.address - b.address);
+    const sources = visibleSources(m);
     const sig = sources.map((s) => s.address).join(",") + "|" + bus;
     if (sig === builtFor) return;
     builtFor = sig; controls.clear();
@@ -158,7 +171,7 @@
       (v) => sendThrottled("master", { operation: "monitorMasterFader", busIndex: bus, value: v }),
       (v) => api("POST", "/api/command", { operation: "monitorMasterFader", busIndex: bus, value: v }).catch(showErr));
     const box = $("sources"); box.textContent = "";
-    if (!sources.length) { const n = document.createElement("div"); n.className = "note"; n.textContent = "Waiting for the console..."; box.append(n); }
+    if (!sources.length) { const n = document.createElement("div"); n.className = "note"; n.textContent = m.phase === "ready" ? "Nothing has been sent to your mix yet. Ask the sound engineer." : "Waiting for the console..."; box.append(n); }
     for (const s of sources) {
       makeSlider(box, "s" + s.address, s.label, 127, db,
         (v) => sendThrottled("s" + s.address, { operation: "sendLevel", address: s.address, busIndex: bus, value: v }),
@@ -171,7 +184,7 @@
 
   function render() {
     const m = state.mixer, bus = slot.busIndex, masterAddr = 0x60 + bus;
-    if (state.slot && state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; }
+    if (state.slot) { if (state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; } if (typeof state.slot.showAll === "boolean") slot.showAll = state.slot.showAll; }
     build();
     ready = m.phase === "ready";
     setPill(ready ? "ok" : "", ready ? "Mixer online" : m.phase === "offline" || m.phase === "error" ? "Console offline. Controls locked." : m.message);
@@ -185,8 +198,7 @@
     const mb = $("mute"); mb.disabled = !ready || !mst || mst.muted == null;
     mb.classList.toggle("muted-on", !!(mst && mst.muted)); mb.textContent = mst && mst.muted ? "MONITOR MUTED (tap to unmute)" : "Mute monitor";
     mb.setAttribute("aria-pressed", String(!!(mst && mst.muted)));
-    for (const s of m.strips) {
-      if (s.address === masterAddr) continue;
+    for (const s of visibleSources(m)) {
       set("s" + s.address, m.params[s.address + ":32:" + bus]);
       set("p" + s.address, m.params[s.address + ":22:" + bus]);
     }
@@ -248,11 +260,29 @@
   function scheduleRetry(ms = 1500) { clearTimeout(retryTimer); retryTimer = setTimeout(() => { if (wantAudio) startAudio(); }, ms); }
   function closePc() { clearInterval(meterTimer); if (pc) { try { pc.close(); } catch (e) {} pc = null; } }
   function stopAudio(silent) { wantAudio = false; clearTimeout(retryTimer); closePc(); if (!silent) api("POST", "/api/audio/hangup", {}).catch(() => {}); }
+  // Delay estimate = network (RTT/2) + the phone's jitter buffer + ~20 ms for capture/encode. It excludes the desk's USB
+  // buffer and the phone's own audio output, so real delay is a little higher.
+  let latSmooth = null, tick = 0;
   function startMeter() {
-    clearInterval(meterTimer); $("meterwrap").hidden = false;
+    clearInterval(meterTimer); $("meterwrap").hidden = false; latSmooth = null;
     meterTimer = setInterval(async () => {
       if (!pc) return;
-      try { const st = await pc.getStats(); st.forEach((r) => { if (r.type === "inbound-rtp" && r.kind === "audio" && typeof r.audioLevel === "number") $("meter").style.width = Math.min(100, Math.round(Math.sqrt(r.audioLevel) * 100)) + "%"; }); } catch (e) {}
+      try {
+        const st = await pc.getStats(); let rtt = null, buf = null;
+        st.forEach((r) => {
+          if (r.type === "inbound-rtp" && r.kind === "audio") {
+            if (typeof r.audioLevel === "number") $("meter").style.width = Math.min(100, Math.round(Math.sqrt(r.audioLevel) * 100)) + "%";
+            if (r.jitterBufferEmittedCount > 0) buf = (r.jitterBufferDelay / r.jitterBufferEmittedCount) * 1000;
+          }
+          if (r.type === "candidate-pair" && r.nominated && typeof r.currentRoundTripTime === "number") rtt = r.currentRoundTripTime * 1000;
+        });
+        if (++tick % 7 === 0 && buf !== null) {
+          const net = rtt === null ? 0 : rtt / 2, total = net + buf + 20;
+          latSmooth = latSmooth === null ? total : latSmooth * 0.7 + total * 0.3;
+          const l = $("lat"); l.hidden = false;
+          l.textContent = "Delay about " + Math.round(latSmooth) + " ms (network " + Math.round(net) + ", buffer " + Math.round(buf) + ")";
+        }
+      } catch (e) {}
     }, 150);
   }
   let wake = null;

@@ -117,7 +117,7 @@ export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slo
       const j = slots.join(b.token);
       if (!j) { auth.noteFailure(ip); throw new HttpError(401, "This QR code is no longer valid. Ask the sound engineer for a new one."); }
       const bus = MONITOR_BUSES[j.user.busIndex!]!;
-      return send(res, 200, { token: j.token, user: j.user, slot: { id: j.slot.id, name: j.slot.name, busIndex: bus.busIndex, busName: bus.name, stereo: bus.stereo } });
+      return send(res, 200, { token: j.token, user: j.user, slot: { id: j.slot.id, name: j.slot.name, busIndex: bus.busIndex, busName: bus.name, stereo: bus.stereo, showAll: j.slot.showAll } });
     }
 
     if (method === "POST" && p === "/api/login") {
@@ -140,7 +140,7 @@ export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slo
     if (method === "GET" && p === "/api/state") {
       const since = Number(url.searchParams.get("since"));
       if (since === link.rev) return send(res, 200, { unchanged: true, rev: link.rev });
-      return send(res, 200, { user, mixer: filterSnapshot(user, link.snapshot()), rev: link.rev, ...(slot ? { slot: { id: slot.id, name: slot.name } } : {}), ...(user.role === "engineer" ? { sharedBuses: auth.sharedBuses() } : {}) });
+      return send(res, 200, { user, mixer: filterSnapshot(user, link.snapshot()), rev: link.rev, ...(slot ? { slot: { id: slot.id, name: slot.name, showAll: slot.showAll } } : {}), ...(user.role === "engineer" ? { sharedBuses: auth.sharedBuses() } : {}) });
     }
 
     if (method === "POST" && p === "/api/command") {

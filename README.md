@@ -40,7 +40,11 @@ npm start                                   # or run from source
 2. On the desk route each monitor mix to USB (Mix 1-4 to USB 1-4, Mix 5-6 to 5-6, 7-8 to 7-8, 9-10 to 9-10, or change the USB channel per monitor in the Hub).
 3. Pick the Qu-32 USB input under **Audio**, press **Apply**. Choose the number of monitors. Each card has a QR code.
 4. Musicians join the same Wi-Fi (use a dedicated access point), scan their QR code, tap **Start listening**.
-5. Talkback: set a mic and the Qu-32 USB return in **Audio**, set up one spare desk channel as described in the Hub, select the monitors, hold the button (or Space).
+5. Each phone shows only the inputs you have sent to that musician's mix (Qu "mix assign"). Tick **Show all channels** on a card to show everything.
+6. Talkback: pick one spare desk channel (default CH 32). Either plug a mic into that channel (**desk microphone** mode, nothing else to set up),
+   or choose a PC microphone and the Qu-32 USB return under **Audio**. Talk to one monitor with the button on its card, or to several with the
+   buttons in the Talkback section (hold, or hold Space). The desk's own built-in talkback routing cannot be controlled remotely (it is not in the Qu MIDI protocol).
+7. Each musician page shows a live delay estimate. One phone per QR code gets audio; a second device on the same QR takes over that monitor's audio.
 
 Musician pages are served over plain HTTP on port 8080 so no certificate warning appears; they carry no passwords and can only reach their
 own monitor mix. The engineer phone app uses HTTPS on 8443 as before.
