@@ -4,130 +4,186 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B1421">
 <title>QU32 Hub</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
-  <div class="brand">QU32 <span>HUB</span></div>
-  <div id="consolePill" class="pill"><i class="dot"></i><span>Starting...</span></div>
-  <div class="spacer"></div>
-  <label class="inline">Network address
-    <select id="lanIp" aria-label="Network address used in QR codes"></select>
-  </label>
-</header>
+<div class="hub-app">
+  <aside class="side" aria-label="Primary navigation">
+    <div class="side-brand"><div class="brand"><div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 16V8m5 12V4m5 13V7m5 8V9"/></svg></div><div><div class="brand-title"><em>QU32</em> HUB</div><div class="brand-caption">Control centre</div></div></div></div>
+    <div class="nav-group-title">Workspace</div>
+    <nav class="side-nav">
+      <button class="nav-link active" data-view="overview"><span data-icon="activity"></span><span class="nav-text">Overview</span></button>
+      <button class="nav-link" data-view="setup"><span data-icon="settings"></span><span class="nav-text">Console &amp; audio</span></button>
+      <button class="nav-link" data-view="mix"><span data-icon="layers"></span><span class="nav-text">Mix designer</span></button>
+      <button class="nav-link" data-view="monitors"><span data-icon="headphones"></span><span class="nav-text">Monitors</span><span class="number" id="navCount">0</span></button>
+      <button class="nav-link" data-view="talkback"><span data-icon="mic"></span><span class="nav-text">Talkback</span></button>
+      <button class="nav-link" data-view="shows"><span data-icon="folder"></span><span class="nav-text">Shows</span></button>
+    </nav>
+    <div class="side-bottom">
+      <div class="side-network"><div class="eyebrow">Musician address</div><strong class="mono" id="sideIp">-</strong><small><span class="dot" id="sideDot"></span><span id="sideNet">Starting</span></small></div>
+    </div>
+  </aside>
 
-<main>
-  <section id="errors" class="banner err" hidden></section>
-  <section id="firstPw" class="banner" hidden>
-    <b>Engineer login for the phone app</b> (shown once):
-    <code id="firstPwText"></code>
-    <span class="muted">Username <code>engineer</code> at <code id="httpsText"></code></span>
-    <button id="firstPwOk" class="small">I saved it</button>
-  </section>
-
-  <div class="grid2">
-    <section class="card">
-      <h2>Console</h2>
-      <div class="row">
-        <input id="mixerIp" placeholder="Qu-32 IP, e.g. 192.168.1.60" inputmode="decimal" aria-label="Qu-32 IP address">
-        <button id="mixerConnect" class="primary">Connect</button>
+  <div class="main-wrap">
+    <header class="topbar">
+      <div><div class="eyebrow"><span id="showCrumb">Untitled show</span> <span class="crumb-sep">/</span> <span id="breadcrumb">Overview</span></div><h1 id="topTitle">Console overview</h1></div>
+      <div class="top-actions">
+        <span class="pill" id="consolePill"><span class="dot"></span><span id="consoleText">Starting...</span></span>
+        <span class="pill" id="phonesPill"><span data-icon="users" class="icon-sm"></span> <span id="phonesText">0 / 0 phones</span></span>
+        <button class="btn btn-ghost" id="stopTalkTop" title="Stop all talkback"><span data-icon="mute"></span> Stop talkback</button>
       </div>
-      <p id="mixerMsg" class="muted"></p>
-      <p class="muted">Find the desk's IP under Setup &gt; Control &gt; Network. It must differ from this PC's address.</p>
-    </section>
+    </header>
 
-    <section class="card">
-      <h2>Audio</h2>
-      <label>Qu-32 USB input
-        <select id="usbIn"></select>
-      </label>
-      <label>Talkback output (Qu-32 USB return)
-        <select id="usbOut"></select>
-      </label>
-      <label>Talkback microphone
-        <select id="mic"></select>
-      </label>
-      <div class="row">
-        <label class="inline">USB return channel <input id="retCh" type="number" min="1" max="32" value="32"></label>
-        <button id="audioApply" class="primary">Apply</button>
-        <button id="audioRefresh" class="small">Refresh devices</button>
+    <main class="workspace">
+      <div class="notice error stack" id="errors" hidden role="alert"></div>
+      <div class="notice stack" id="firstPw" hidden>
+        <span data-icon="shield"></span>
+        <span class="grow"><strong>Engineer login for the phone app</strong> (shown once). Username <code>engineer</code> · password <code id="firstPwText"></code> · address <code id="httpsText"></code></span>
+        <button class="btn btn-secondary" id="firstPwOk">I saved it</button>
       </div>
-      <p id="audioMsg" class="muted"></p>
-    </section>
+
+      <!-- ===================== Overview ===================== -->
+      <section class="view active" id="view-overview">
+        <div class="overview-hero"><div><div class="eyebrow hero-eyebrow" id="heroEyebrow">System status</div><h2 class="headline" id="heroHead">Checking your setup...</h2><p id="heroText">Connecting to the console and audio engine.</p><div class="hero-actions"><button class="btn btn-primary" data-open="mix"><span data-icon="sliders"></span> Open mix designer</button><button class="btn btn-secondary" data-open="shows"><span data-icon="folder"></span> Current show</button></div></div><div class="hero-mark"><span data-icon="sliders"></span></div></div>
+        <div class="stats">
+          <article class="card stat"><div class="eyebrow">Console status</div><div class="value" id="statConsole">-</div><p id="statConsoleSub">-</p></article>
+          <article class="card stat"><div class="eyebrow">Phones on stage</div><div class="value" id="statPhones">-</div><p id="statPhonesSub">-</p></article>
+          <article class="card stat"><div class="eyebrow">USB audio inputs</div><div class="value" id="statUsb">-</div><p id="statUsbSub">-</p></article>
+        </div>
+        <div class="two-col">
+          <div><div class="section-header"><h2>Monitors <span class="soft sm">· Live overview</span></h2><button class="btn btn-ghost" data-open="monitors">Manage all <span data-icon="arrow" class="icon-sm"></span></button></div><div class="card card-pad"><div id="overviewMonitors" class="monitor-list"></div></div></div>
+          <div><div class="section-header"><h2>Ready for service?</h2><span class="tag" id="readyTag">-</span></div><div class="card card-pad"><div class="step-list" id="readySteps"></div><button class="btn btn-secondary full" data-open="setup">Review setup <span data-icon="arrow" class="icon-sm"></span></button></div></div>
+        </div>
+      </section>
+
+      <!-- ===================== Console & audio ===================== -->
+      <section class="view" id="view-setup">
+        <div class="heading-row"><div><div class="eyebrow">System configuration</div><h2 class="headline">Console &amp; audio</h2><p>Connect your desk, choose the audio interface, and select the local network musicians will use.</p></div></div>
+        <div class="detail-grid">
+          <article class="card config-card">
+            <div class="card-head"><div><h2><span data-icon="sliders"></span> Qu-32 console</h2><p>Control connection over the local network</p></div><span class="pill" id="setupConsolePill"><span class="dot"></span><span>-</span></span></div>
+            <label class="field-label" for="mixerIp">Console IP address</label>
+            <div class="form-row"><input class="input mono" id="mixerIp" placeholder="e.g. 192.168.1.60" inputmode="decimal" autocomplete="off"><button class="btn btn-primary" id="mixerConnect">Connect</button></div>
+            <div class="help-text">Find the address on the desk under Setup &rsaquo; Control &rsaquo; Network. It must differ from this PC's address.</div>
+            <hr class="rule">
+            <div class="status-strip"><span class="dot" id="mixerDot"></span><strong id="mixerLine">-</strong><span class="muted" id="mixerSub"></span></div>
+          </article>
+
+          <article class="card config-card">
+            <div class="card-head"><div><h2><span data-icon="headphones"></span> USB audio routing</h2><p>Choose the Qu-32 multichannel audio device</p></div><span class="pill" id="usbPill">-</span></div>
+            <label class="field-label" for="usbIn">Qu-32 USB input</label>
+            <select class="select" id="usbIn"></select>
+            <div class="config-grid gap-top">
+              <div><label class="field-label" for="usbOut">Talkback output (desk-mix monitors)</label><select class="select" id="usbOut"></select></div>
+              <div><label class="field-label" for="retCh">USB return channel</label><input class="input mono" id="retCh" type="number" min="1" max="32" value="32"></div>
+            </div>
+            <div class="settings-foot"><span class="muted sm" id="audioMsg"></span><span class="row-gap"><button class="btn btn-ghost" id="audioRefresh"><span data-icon="refresh"></span> Refresh</button><button class="btn btn-secondary" id="audioApply">Apply changes</button></span></div>
+          </article>
+
+          <article class="card config-card">
+            <div class="card-head"><div><h2><span data-icon="wifi"></span> Local network</h2><p>The address inside every musician QR code</p></div></div>
+            <label class="field-label" for="lanIp">Gateway Wi-Fi address</label>
+            <select class="select mono" id="lanIp"></select>
+            <div class="help-text">Musician pages open at <span class="mono" id="baseUrl">-</span></div>
+            <div class="notice info gap-top"><span data-icon="shield"></span> QR links grant access to a personal mix. Treat them as private. Use a dedicated Wi-Fi access point, never guest Wi-Fi.</div>
+          </article>
+
+          <article class="card config-card">
+            <div class="card-head"><div><h2><span data-icon="mic"></span> Talkback source</h2><p>Route the engineer's voice to selected monitors</p></div></div>
+            <label class="field-label" for="tbSource">Microphone source</label>
+            <select class="select" id="tbSource"><option value="desk">Desk microphone (plugged into the channel below)</option><option value="pc">PC microphone</option></select>
+            <div class="gap-top" id="pcMicRow" hidden><label class="field-label" for="mic">PC microphone</label><select class="select" id="mic"></select></div>
+            <div class="config-grid gap-top">
+              <div><label class="field-label" for="tbStrip">Desk input channel</label><select class="select" id="tbStrip"></select></div>
+              <div><label class="field-label" for="tbLevel">Talkback level</label><select class="select" id="tbLevel"></select></div>
+            </div>
+            <div class="help-text">Ensure the talkback channel is not routed to the main LR mix.</div>
+          </article>
+
+          <article class="card config-card">
+            <div class="card-head"><div><h2><span data-icon="phone"></span> Engineer phone app</h2><p>Full-console remote over HTTPS</p></div><span class="pill" id="httpsPill">-</span></div>
+            <div class="help-text">Sign in with username <span class="mono">engineer</span> at</div>
+            <div class="mono url-line" id="httpsUrl">-</div>
+            <hr class="rule">
+            <div class="row-gap"><button class="btn btn-secondary" id="resetPw"><span data-icon="lock"></span> Reset engineer password</button><button class="btn btn-ghost" id="openData"><span data-icon="folder"></span> Open data folder</button></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ===================== Mix designer ===================== -->
+      <section class="view" id="view-mix">
+        <div class="heading-row"><div><div class="eyebrow">Assign audio to musicians</div><h2 class="headline">Mix designer</h2><p>Choose which of the 32 desk inputs each musician is allowed to hear. Changes reach their phone immediately. Input N is read from USB channel N: set the desk's USB send to pre-fader direct out so your own fader moves never change their mix.</p></div><button class="btn btn-primary" id="saveMatrix"><span data-icon="save"></span> Save show</button></div>
+        <div class="notice info stack" id="matrixEmpty" hidden><span data-icon="help"></span> No digital-mix monitors yet. Add monitors, or switch a monitor to Digital mix, to assign inputs here.</div>
+        <div class="matrix-layout" id="matrixBox">
+          <div class="matrix-toolbar">
+            <div class="form-row"><span data-icon="search"></span><input class="input search" type="search" id="matrixSearch" placeholder="Search 32 channels..." aria-label="Search channels"></div>
+            <div class="status-strip"><span class="pill">&#10003; Assigned = audible</span><span class="pill" id="matrixDirty">No changes</span>
+              <span class="row-gap"><select class="select slim" id="copyFrom" aria-label="Copy from"></select><span data-icon="arrow" class="icon-sm"></span><select class="select slim" id="copyTo" aria-label="Copy to"></select><button class="btn btn-secondary" id="matrixCopy">Copy assignments</button></span>
+            </div>
+          </div>
+          <div class="matrix-scroll"><table class="mix-table" aria-label="Channel assignment matrix" id="matrix"></table></div>
+        </div>
+        <div class="help-text">Tip: Tab between checkboxes; Space toggles an assignment. The first column and header stay visible while scrolling.</div>
+      </section>
+
+      <!-- ===================== Monitors ===================== -->
+      <section class="view" id="view-monitors">
+        <div class="heading-row"><div><div class="eyebrow">Stage connections</div><h2 class="headline">Musician monitors</h2><p>Manage each musician's mix, levels, access link and talkback destination.</p></div>
+          <div class="status-strip"><span class="pill" id="monCount">0 of 7 monitors</span><button class="btn btn-secondary" id="minus" aria-label="Fewer monitors">&minus;</button><button class="btn btn-secondary" id="plus" aria-label="More monitors"><span data-icon="plus"></span> Add</button><button class="btn btn-secondary" id="qrSheet"><span data-icon="qr"></span> Print QR sheet</button></div></div>
+        <div class="notice info stack"><span data-icon="shield"></span> Each QR code is a private link to one musician's mix. Make a new QR if a phone is lost or the wrong person scanned it.</div>
+        <div class="card card-pad empty-card" id="monEmpty" hidden><h2>No monitors yet</h2><p class="muted">Add a monitor for each musician who needs their own mix (up to 7).</p><button class="btn btn-primary" id="addFirst"><span data-icon="plus"></span> Add monitor</button></div>
+        <div class="monitor-cards" id="monitorCards"></div>
+      </section>
+
+      <!-- ===================== Talkback ===================== -->
+      <section class="view" id="view-talkback">
+        <div class="heading-row"><div><div class="eyebrow">Direct communication</div><h2 class="headline">Talkback</h2><p>Select who should hear you, then press and hold. Releasing always stops the transmission immediately.</p></div><span class="pill">Press and hold <span class="kbd">Space</span></span></div>
+        <div class="big-talk">
+          <div class="card talk-surface"><div class="eyebrow">Talk to</div><div class="talk-selector" id="talkPageTargets"></div>
+            <button class="talk-circle" id="bigTalk" aria-label="Hold to talk to selected musicians"><span data-icon="mic"></span><span id="talkState">HOLD TO TALK</span></button>
+            <p class="muted-text" id="talkHint">Select at least one monitor, then hold the button.</p></div>
+          <article class="card talk-config"><div class="card-head"><div><h2>Talkback settings</h2><p>Keep your routing predictable during service.</p></div></div>
+            <div class="field-label">Source</div><div class="muted-text" id="talkSourceInfo">-</div>
+            <div class="field-label gap-top">Desk channel and level</div><div class="muted-text" id="talkLevelInfo">-</div>
+            <button class="btn btn-secondary gap-top" data-open="setup">Change in Console &amp; audio <span data-icon="arrow" class="icon-sm"></span></button>
+            <hr class="rule">
+            <div class="step-list">
+              <div class="step"><span class="check">&#10003;</span><span><strong>Release on mouse-up</strong><small>Also releases when this window loses focus</small></span></div>
+              <div class="step"><span class="check">&#10003;</span><span><strong>Automatic 60-second cutoff</strong><small>Never left latched on</small></span></div>
+              <div class="step"><span class="check">&#10003;</span><span><strong>All destinations shown</strong><small>Selected listeners are always visible</small></span></div>
+            </div>
+            <div class="notice gap-top"><span data-icon="alert"></span> The talkback channel must be excluded from Main LR on the desk. Its sends are set to minus infinity on release.</div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ===================== Shows ===================== -->
+      <section class="view" id="view-shows">
+        <div class="heading-row"><div><div class="eyebrow">Save and recall your setups</div><h2 class="headline">Shows</h2><p>A show remembers musician names, channel assignments, starting levels and limits. Scan links stay the same across shows.</p></div><button class="btn btn-primary" id="newShow"><span data-icon="plus"></span> New show</button></div>
+        <div class="card card-pad gap-bottom">
+          <div class="card-head"><div><div class="eyebrow">Currently loaded</div><h2 class="show-title" id="currentShowName">Untitled show</h2><p id="showSaveState">-</p></div><span class="pill" id="showStatus">-</span></div>
+          <div class="form-row wrap"><input class="input grow" id="showName" placeholder="Show name, e.g. Sunday AM" maxlength="80" aria-label="Show name"><button class="btn btn-primary" id="saveShow"><span data-icon="save"></span> Save show</button><button class="btn" id="exportShow"><span data-icon="export"></span> Export...</button><button class="btn" id="importShow">Import...</button></div>
+          <p class="help-text">Shows are saved on this PC. Export a copy to move a setup to another computer.</p>
+        </div>
+        <div class="section-header"><h2>Saved shows</h2><span class="muted sm" id="showCountText">-</span></div>
+        <div class="show-grid" id="showCards"></div>
+      </section>
+    </main>
   </div>
+</div>
 
-  <section class="card" id="showCard">
-    <div class="row between">
-      <h2>Show</h2>
-      <div class="row"><b id="showName">Untitled show</b><span id="showDirty" class="muted"></span></div>
-    </div>
-    <div class="row">
-      <input id="showNameInput" placeholder="Show name, e.g. Sunday AM" maxlength="80" aria-label="Show name">
-      <button id="showSave" class="primary">Save show</button>
-      <select id="showList" aria-label="Saved shows"></select>
-      <button id="showLoad">Open</button>
-      <button id="showDelete" class="small">Delete</button>
-      <button id="showNew" class="small">New</button>
-      <button id="showExport" class="small">Export...</button>
-      <button id="showImport" class="small">Import...</button>
-    </div>
-    <p class="muted">A show remembers which inputs each musician gets, their starting levels and limits. Musicians keep the same QR code when you open another show, and their phones update live.</p>
-  </section>
-
-  <section class="card" id="matrixCard">
-    <h2>Mix designer: which inputs each musician hears</h2>
-    <p class="muted">Tick an input to put it in that musician's personal mix. Each musician can then raise or lower only those inputs on their phone, up to the limit you set under their card. Inputs are read from the same-numbered USB channel (set the desk's USB send to pre-fader direct out so your own fader moves never change their mix).</p>
-    <div class="matrixwrap"><table id="matrix"></table></div>
-  </section>
-
-  <section class="card">
-    <div class="row between">
-      <h2>Monitors</h2>
-      <div class="row">
-        <span class="muted">Number of monitors</span>
-        <button id="minus" class="small" aria-label="Fewer monitors">&minus;</button>
-        <b id="count" class="count">0</b>
-        <button id="plus" class="small" aria-label="More monitors">+</button>
-      </div>
-    </div>
-    <p class="muted">Each person scans their own QR code with the phone camera. No app install, no password. Monitor 1 is Mix 1 on the desk, and so on.
-      Route each mix to USB on the desk, then set the first USB channel per monitor below.</p>
-    <div id="slots" class="slots"></div>
-    <p id="noSlots" class="muted" hidden>Choose how many monitors you need.</p>
-  </section>
-
-  <section class="card">
-    <h2>Talkback</h2>
-    <div class="row">
-      <label class="inline">Desk input channel <select id="tbStrip"></select></label>
-      <label class="inline">Level <select id="tbLevel"></select></label>
-    </div>
-    <div id="tbBuses" class="chips" aria-label="Talk to these monitors"></div>
-    <div class="row">
-      <button id="talk" class="talk" disabled>Hold to talk</button>
-      <span id="talkMsg" class="muted">Hold the button (or the space bar). Release to stop. Never stays on longer than 60 seconds.</span>
-    </div>
-    <p class="muted">Talk to one monitor with the button on its card, or to several with the buttons above. Two ways to supply your voice:
-      <b>desk microphone</b> (plug a mic into the channel chosen here, leave the PC microphone "Not set" under Audio) or
-      <b>PC microphone</b> (choose a mic and the Qu-32 USB return under Audio).</p>
-    <details>
-      <summary>One-time desk setup for talkback</summary>
-      <ol class="muted">
-        <li>Pick a spare input channel (default CH 32). Desk microphone: plug the mic into that channel's preamp. PC microphone: set its input source to USB and its USB channel to the same number as "USB return channel" above.</li>
-        <li>Unmute it, fader at 0 dB, and switch off its LR assignment so talkback never reaches the main mix.</li>
-        <li>Leave its sends at minus infinity. This app raises them only to the selected mixes while you hold the button, and sets them back to minus infinity on release.</li>
-        <li>Do not use that channel for anything else: release always resets all of its monitor sends.</li>
-      </ol>
-    </details>
-  </section>
-
-  <footer>
-    <button id="resetPw" class="small">Reset engineer password</button>
-    <button id="openData" class="small">Open data folder</button>
-    <span class="muted" id="urls"></span>
-  </footer>
-</main>
+<footer class="desk-footer" aria-label="Persistent talkback controls">
+  <div class="footer-inner">
+    <div><div class="eyebrow">Quick talkback</div><div class="footer-copy">Hold button or <span class="kbd">Space</span> · release to stop</div></div>
+    <div class="footer-target" id="footerTargets"></div>
+    <button class="btn btn-danger footer-talk" id="footerTalk"><span data-icon="mic"></span> Hold to talk</button>
+  </div>
+</footer>
+<div class="toast" role="status" aria-live="polite" id="toast"></div>
+<div id="modalRoot"></div>
+<script src="icons.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

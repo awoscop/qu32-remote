@@ -4,84 +4,142 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1421">
-<title>My Monitor</title>
+<title>My Mix - QU32 Hub</title>
 <style>
-  :root { --bg:#0B1421; --surface:#172738; --border:#33485A; --text:#EAF3FA; --muted:#93AABF; --accent:#42DBC2; --accent-dim:#1E6F63; --danger:#D35D65; --warn:#E0A23C; }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-  body { padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); max-width: 640px; margin: 0 auto; }
-  header { display:flex; align-items:center; gap:10px; padding:6px 0 12px; border-bottom:1px solid var(--border); }
-  h1 { font-size:18px; margin:0; letter-spacing:.5px; }
-  .pill { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); text-align:right; }
-  .dot { width:10px; height:10px; border-radius:50%; background:var(--warn); flex:none; }
-  .ok .dot { background:var(--accent); } .bad .dot { background:var(--danger); }
-  .sub { color:var(--muted); font-size:13px; margin:8px 0 14px; }
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
-  h2 { font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin:16px 0 8px; font-weight:600; }
-  .row { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); }
-  .row:last-child { border-bottom:0; }
-  .head { display:flex; justify-content:space-between; gap:8px; font-size:16px; }
-  .val { color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px; white-space:nowrap; }
-  input[type=range] { width:100%; height:44px; margin:2px 0; background:transparent; accent-color:var(--accent); }
-  input[type=range]:disabled { opacity:.4; }
-  button { font:inherit; min-height:48px; border-radius:12px; border:1px solid var(--border); background:transparent; color:var(--text); padding:0 16px; font-weight:700; width:100%; }
-  button.primary { background:var(--accent); border-color:var(--accent); color:var(--bg); }
-  button.muted-on { background:var(--danger); border-color:var(--danger); }
-  button:disabled { opacity:.4; }
-  .note { color:var(--muted); font-size:12px; margin-top:8px; }
-  #full { display:none; text-align:center; padding:48px 8px; } #full h2 { color:var(--danger); font-size:16px; }
-  .meter { height:6px; border-radius:3px; background:var(--border); overflow:hidden; margin-top:8px; } .meter i { display:block; height:100%; width:0; background:var(--accent); }
+/* QU32 Hub musician page. Stage-safe dark theme. System fonts only; no external requests. */
+:root{color-scheme:dark;--bg:#0B1421;--surface:#172738;--surface2:#1F3349;--border:#33485A;--text:#EAF3FA;--muted:#A4B8C9;--soft:#718BA1;--accent:#42DBC2;--accent-dark:#1E6F63;--warning:#E0A23C;--danger:#E56D78;--font:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif;--mono:'IBM Plex Mono','Cascadia Code',Consolas,ui-monospace,monospace}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg);color:var(--text);font-family:var(--font)}
+body{margin:0;min-width:310px;font-size:14px;line-height:1.46;background:linear-gradient(180deg,#0b1421 0%,#102030 48%,#0b1421 100%);min-height:100vh}
+button,input{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid rgba(66,219,194,.75);outline-offset:3px}
+button:disabled,input:disabled{cursor:not-allowed;opacity:.5}
+[hidden]{display:none!important}
+.shell{max-width:500px;margin:auto;padding:max(22px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));min-height:100vh}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:30px}
+.wordmark{font-size:12px;font-weight:800;letter-spacing:.14em;white-space:nowrap}.wordmark em{font-style:normal;color:var(--accent)}.wordmark .soft{color:var(--soft)}
+.pill{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);background:rgba(24,45,64,.8);color:var(--muted);border-radius:30px;padding:7px 10px;font-size:11px;font-weight:690;text-align:right}
+.pill.ok{color:#9eebde;background:rgba(66,219,194,.07);border-color:#2e6b67}.pill.warn{color:#f5cc84;background:rgba(224,162,60,.07);border-color:#795f3a}.pill.danger{color:#ffc2c5;background:rgba(229,109,120,.11);border-color:#895661}
+.dot{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:var(--soft);box-shadow:0 0 0 3px rgba(130,157,181,.13);margin-right:7px}
+.ok .dot{background:var(--accent);box-shadow:0 0 0 3px rgba(66,219,194,.14)}.warn .dot{background:var(--warning);box-shadow:0 0 0 3px rgba(224,162,60,.15)}.danger .dot{background:var(--danger);box-shadow:0 0 0 3px rgba(229,109,120,.15)}
+.eyebrow{color:var(--accent);font-size:10px;font-weight:750;letter-spacing:.145em;text-transform:uppercase}
+h1.title{font-size:36px;font-weight:810;letter-spacing:-.065em;margin:7px 0;line-height:1.04;overflow-wrap:anywhere}.title .p{color:var(--accent)}
+.intro{font-size:13px;line-height:1.6;color:var(--muted);max-width:365px;margin:0 0 22px}
+.card{background:#182c3d;border:1px solid #385169;border-radius:20px;padding:20px;margin-bottom:16px}
+.card-head{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.card-head h2{font-size:15px;line-height:1.3;margin:0;font-weight:770;letter-spacing:-.03em}.card-head p{font-size:12px;color:var(--muted);margin:5px 0 0}
+.audio-card{background:radial-gradient(circle at 98% 0,rgba(66,219,194,.13),transparent 36%),#1a3541;border-color:#326b67}
+.audio-icon{width:43px;height:43px;display:grid;place-items:center;border:1px solid #3f8b82;background:#28574f;border-radius:13px;color:#aaf3e5;margin-bottom:16px}.audio-icon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.btn{min-height:55px;width:100%;border:1px solid var(--accent);border-radius:12px;background:var(--accent);color:#062824;font-size:15px;font-weight:810;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.99)}.btn.listening{background:#1e3345;color:#cbfff4;border-color:#2e6b67}
+.feedback{display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;color:#c7e1e6;margin:14px 0 9px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wave{display:flex;height:25px;gap:3px;align-items:flex-end}.wave i{display:block;flex:1;min-height:2px;height:3%;background:linear-gradient(180deg,#58e9cd,#287f72);border-radius:3px 3px 1px 1px;opacity:.9;transition:height .1s linear}.wave i.hot{background:linear-gradient(180deg,#f0c26c,#9c8551)}
+.meter-help{display:flex;gap:12px;justify-content:space-between;font-size:11px;margin-top:10px;color:#a9becb}
+.readout{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}.readout .eyebrow{color:var(--muted)}.readout strong{font-size:30px;line-height:1;font-family:var(--mono);letter-spacing:-.08em}
+.range{--fill:50%;width:100%;appearance:none;-webkit-appearance:none;height:9px;border-radius:10px;background:linear-gradient(90deg,var(--accent) 0 var(--fill),#2b4357 var(--fill) 100%);outline:none;margin:0;cursor:pointer;touch-action:pan-y}
+.range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;border-radius:50%;background:#f1f8fc;border:5px solid var(--accent);box-shadow:0 3px 12px rgba(0,0,0,.28)}
+.range::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#f1f8fc;border:5px solid var(--accent)}
+.range:disabled{opacity:.35}
+.range-wrap{padding:12px 3px 6px}.hints{display:flex;justify-content:space-between;color:#718ea5;font-size:10px;font-family:var(--mono);margin-top:12px}
+.mute-row{border-top:1px solid var(--border);margin-top:13px;padding-top:16px;display:flex;justify-content:space-between;align-items:center;gap:11px}.mute-row p{margin:3px 0 0;font-size:11px;color:var(--muted)}.strong{font-weight:750}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--muted);font-size:12px;min-height:44px}
+.switch input{appearance:none;-webkit-appearance:none;width:44px;height:26px;border:1px solid #577187;background:#30475b;border-radius:40px;position:relative;flex-shrink:0}
+.switch input:before{content:'';position:absolute;width:18px;height:18px;background:#bed0db;border-radius:50%;top:3px;left:3px;transition:transform .16s}
+.switch input:checked{background:#7a3943;border-color:var(--danger)}.switch input:checked:before{transform:translateX(18px);background:#ffd7da}
+.switch .state{min-width:26px;text-align:right}.switch .state.on{color:var(--danger);font-weight:800}
+.input-header{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:26px 1px 14px}.input-header h2{margin:0;font-size:18px;letter-spacing:-.035em}.input-header small{color:var(--muted);font-size:11px}
+.channel{border:1px solid #344d62;background:#162a3b;border-radius:16px;padding:17px 17px 15px;margin-bottom:11px}
+.channel.locked{opacity:.68}
+.ch-top{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}.ch-title{display:flex;gap:10px;align-items:center;min-width:0}.ch-title strong{display:block;font-size:14px;overflow-wrap:anywhere}.ch-title small{color:var(--muted);font-size:11px}
+.avatar{height:39px;width:39px;flex:none;border-radius:12px;display:grid;place-items:center;font-weight:750;font-size:12px;border:1px solid rgba(255,255,255,.06);background:#2c4661;color:#dbeef8}
+.avatar.c0{background:#1b5c57;color:#a8eee0}.avatar.c1{background:#334e73;color:#bcd7fa}.avatar.c2{background:#625139;color:#fde6ac}.avatar.c3{background:#493f67;color:#e0cdf8}
+.ch-db{font-size:14px;font-family:var(--mono);font-weight:730;white-space:nowrap}
+.labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin:9px 0 0}
+.pan{display:flex;gap:14px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid #2b4054}.pan label{font-size:11px;color:var(--muted);min-width:24px}
+.pan .range{flex:1;height:5px;background:linear-gradient(90deg,#3f647a,#52ceb6 50%,#3f647a)}.pan .range::-webkit-slider-thumb{width:22px;height:22px;border-width:4px}.pan .range::-moz-range-thumb{width:12px;height:12px;border-width:4px}
+.pan-val{font-size:11px;color:#bcd7e3;font-family:var(--mono);min-width:37px;text-align:right}
+.locknote{font-size:12px;color:#ecb771;margin-top:10px}
+.notice{border:1px solid #346575;color:#a8e9ec;background:#1b3945;border-radius:12px;padding:11px 13px;font-size:12px;margin-top:14px;display:flex;gap:9px;align-items:flex-start}
+.notice.error{background:#3c2732;border-color:#86545c;color:#ffc6cd;margin:0 0 16px}.notice.warn{background:#3d3324;border-color:#6a573a;color:#f6d6a0}
+.notice button{margin-left:auto;background:none;border:0;color:inherit;font-size:16px;min-width:44px;min-height:44px;margin:-12px -13px -12px auto}
+.bottom{color:#7794aa;text-align:center;font-size:11px;margin-top:30px;line-height:1.7}
+.full{min-height:calc(100vh - 140px);display:flex;align-items:center;justify-content:center;text-align:center;flex-direction:column;gap:14px}.full svg{width:45px;height:45px;fill:none;stroke:var(--danger);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.full h1{font-size:24px;letter-spacing:-.04em;max-width:310px;margin:0}.full p{color:var(--muted);font-size:13px;max-width:310px;margin:0}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<header>
-  <h1 id="title">My Monitor</h1>
-  <div class="pill" id="pill" role="status" aria-live="polite"><span class="dot"></span><span id="pilltext">Connecting...</span></div>
-</header>
-
-<div id="full"><h2 id="fulltext">This QR code is no longer valid.</h2><p class="sub">Ask the sound engineer for a new one.</p></div>
-
-<main id="main" hidden>
-  <p class="sub" id="sub"></p>
-
-  <div class="card" id="audiocard">
-    <button class="primary" id="listen">Start listening</button>
-    <div class="meter" id="meterwrap" hidden><i id="meter"></i></div>
-    <div class="note" id="audionote">Plug in your earbuds, then tap to hear your mix.</div>
-    <div class="note" id="lat" hidden></div>
-    <audio id="player" playsinline autoplay></audio>
+<main class="shell">
+  <div class="top">
+    <div class="wordmark"><em>QU32</em> HUB <span class="soft">/ MY MIX</span></div>
+    <span class="pill" id="pill" role="status" aria-live="polite"><span class="dot"></span><span id="pilltext">Connecting...</span></span>
   </div>
 
-  <h2>Volume</h2>
-  <div class="card">
-    <div id="master"></div>
-    <button id="mute" style="margin-top:8px">Mute monitor</button>
-    <div class="note" id="mutenote">This is your whole monitor output.</div>
+  <div class="full" id="full" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
+    <h1 id="fulltext">This QR code is no longer valid.</h1>
+    <p>Ask your sound engineer for a new code. Your previous phone connection has been disconnected.</p>
   </div>
 
-  <h2>My inputs</h2>
-  <div class="card" id="sources"><div class="note">Waiting for the console...</div></div>
+  <div id="content" hidden>
+    <div class="eyebrow" id="eyebrow">Personal mix</div>
+    <h1 class="title"><span id="title">My mix</span><span class="p">.</span></h1>
+    <p class="intro" id="sub">Your own mix, your way. Adjust how loud you hear each instrument without changing anyone else's sound.</p>
+
+    <div class="notice error" id="offline" hidden role="alert">Cannot reach the gateway. Check your Wi-Fi. Controls are locked until it reconnects.</div>
+
+    <section class="card audio-card" aria-labelledby="audioHeading">
+      <div class="audio-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3"/><rect x="3" y="13" width="4" height="8" rx="2"/><rect x="17" y="13" width="4" height="8" rx="2"/></svg></div>
+      <div class="card-head" style="margin:0"><div><h2 id="audioHeading">Hear your mix</h2><p id="audioSub">Use wired earbuds for the lowest delay.</p></div><span class="pill ok" id="audioStatus"><span class="dot"></span><span id="audioStatusText">Ready</span></span></div>
+      <button class="btn" id="listen">Start listening</button>
+      <div class="feedback"><span id="audionote">Plug in your earbuds, then tap to hear your mix.</span><span class="mono" id="lat" hidden></span></div>
+      <div class="wave" id="wave" aria-hidden="true" hidden></div>
+      <audio id="player" playsinline autoplay></audio>
+    </section>
+
+    <section class="card" aria-labelledby="masterHeading">
+      <div class="card-head"><div><h2 id="masterHeading">Overall volume</h2><p id="masterSub">Only changes what you hear.</p></div></div>
+      <div class="readout"><div class="eyebrow">Your mix</div><strong id="masterRead">0 dB</strong></div>
+      <div class="range-wrap" id="master"></div>
+      <div class="hints"><span>-inf</span><span>0 dB</span><span>+10</span></div>
+      <div class="mute-row">
+        <div><div class="strong" id="muteTitle">Mute everything</div><p id="mutenote">Your mix is playing normally.</p></div>
+        <label class="switch"><input type="checkbox" id="mute" aria-label="Mute everything"><span class="state" id="muteState">Off</span></label>
+      </div>
+    </section>
+
+    <div class="input-header"><h2>My inputs</h2><small><span id="inputCount">0 inputs</span> · selected by engineer</small></div>
+    <div id="sources"></div>
+
+    <div class="notice" id="help">Need a different instrument? Ask your sound engineer to add it.</div>
+    <div class="notice warn" id="btHint">Wired earbuds give the lowest delay. Bluetooth adds noticeable lag.<button id="btClose" aria-label="Dismiss">&times;</button></div>
+    <div class="bottom">QU32 Hub · Personal monitor</div>
+  </div>
 </main>
 
 <script>
 (() => {
   "use strict";
   const token = location.pathname.split("/").pop();
-  let session = null, slot = null, rev = -1, state = null, ready = false, polling = false;
+  let session = null, slot = null, rev = -1, state = null, polling = false, online = true;
+  const $ = (id) => document.getElementById(id);
 
   // Fader law: official Qu table points (raw 0..127 -> dB). Same table as @qu32/sdk.
   const PTS = [[0,-Infinity],[12,-45],[16,-40],[23,-35],[31,-30],[39,-25],[47,-20],[54,-15],[63,-10],[79,-5],[98,0],[114,5],[127,10]];
-  function db(raw) {
-    if (raw <= 0) return "-inf";
+  function dbNum(raw) {
+    if (raw <= 0) return -Infinity;
     for (let i = 1; i < PTS.length; i++) {
       const [r1, d1] = PTS[i], [r0, d0] = PTS[i - 1];
-      if (raw <= r1) { const lo = isFinite(d0) ? d0 : -60; const v = raw === r1 ? d1 : lo + (raw - r0) / (r1 - r0) * (d1 - lo); const r = Math.round(v * 10) / 10; return (r > 0 ? "+" : "") + r.toFixed(1) + " dB"; }
+      if (raw <= r1) { const lo = isFinite(d0) ? d0 : -60; return raw === r1 ? d1 : lo + (raw - r0) / (r1 - r0) * (d1 - lo); }
     }
-    return "+10.0 dB";
+    return 10;
   }
+  function db(raw) { if (raw <= 0) return "-inf"; const r = Math.round(dbNum(raw) * 10) / 10; return (r > 0 ? "+" : "") + (Number.isInteger(r) ? r + "" : r.toFixed(1)) + " dB"; }
   const pan = (v) => v === 37 ? "C" : v < 37 ? "L" + Math.round((37 - v) / 37 * 100) : "R" + Math.round((v - 37) / 37 * 100);
-  const $ = (id) => document.getElementById(id);
+  const paint = (r) => r.style.setProperty("--fill", ((+r.value - (+r.min || 0)) / ((+r.max || 100) - (+r.min || 0)) * 100) + "%");
+  const initials = (n) => { const w = String(n).trim().split(/\s+/).filter(Boolean); return ((w[0] || "?")[0] + (w.length > 1 ? w[1][0] : (w[0] || "").slice(1, 2))).toUpperCase(); };
   const setPill = (cls, text) => { $("pill").className = "pill " + cls; $("pilltext").textContent = text; };
+  const setAudioPill = (cls, text) => { $("audioStatus").className = "pill " + cls; $("audioStatusText").textContent = text; };
 
   async function api(method, path, body, retry = true) {
     const r = await fetch(path, {
@@ -100,10 +158,11 @@
       const r = await api("POST", "/api/join", { token }, false);
       session = r.token; slot = r.slot; rev = -1;
       $("title").textContent = slot.name || slot.busName;
+      $("eyebrow").textContent = "Monitor " + String(slot.id).padStart(2, "0") + " · " + (slot.mode === "digital" ? "Personal mix" : slot.busName + (slot.stereo ? " stereo" : " mono"));
       $("sub").textContent = slot.mode === "digital"
-        ? "Your personal mix. The sound engineer chooses which inputs you get; you set how loud each one is."
-        : slot.busName + (slot.stereo ? " (stereo)" : " (mono)") + " · assigned by the sound engineer. Other mixes are locked.";
-      document.title = (slot.name || slot.busName) + " - Monitor";
+        ? "Your own mix, your way. Adjust how loud you hear each instrument without changing anyone else's sound."
+        : "Your monitor mix. Other mixes and the main speakers are locked to you.";
+      document.title = (slot.name || slot.busName) + " - QU32 Hub";
       return true;
     } catch (e) {
       if (e.status === 401 || e.status === 429) { revoked(e.message); return false; }
@@ -112,47 +171,107 @@
   }
   function revoked(msg) {
     stopAudio(true); polling = false;
-    $("main").hidden = true; $("full").style.display = "block"; $("fulltext").textContent = msg || "This QR code is no longer valid.";
-    setPill("bad", "Disconnected");
+    $("content").hidden = true; $("full").hidden = false;
+    $("fulltext").textContent = msg || "This QR code is no longer valid.";
+    setPill("danger", "Access revoked");
   }
 
   // ---------- controls
   const sendTimers = new Map();
-  function sendThrottled(key, cmd) {
+  function sendThrottled(key, path, body) {
     let t = sendTimers.get(key);
-    if (!t) { t = { last: 0, timer: null, cmd }; sendTimers.set(key, t); }
-    t.cmd = cmd;
+    if (!t) { t = { last: 0, timer: null, path, body }; sendTimers.set(key, t); }
+    t.path = path; t.body = body;
     if (t.timer) return;
-    t.timer = setTimeout(() => {
-      t.timer = null; t.last = Date.now();
-      if (t.cmd._dmix) { const b = Object.assign({}, t.cmd); delete b._dmix; api("POST", "/api/dmix", b).catch(showErr); }
-      else api("POST", "/api/command", t.cmd).catch(showErr);
-    }, Math.max(0, t.last + 40 - Date.now()));
+    t.timer = setTimeout(() => { t.timer = null; t.last = Date.now(); api("POST", t.path, t.body).catch(showErr); }, Math.max(0, t.last + 40 - Date.now()));
   }
+  const post = (path, body) => api("POST", path, body).catch(showErr);
   function showErr(e) { $("audionote").textContent = e.message; }
 
-  const controls = new Map(); // key -> {input, val, fmt, dragging}
-  function makeSlider(parent, key, label, max, fmt, onInput, onFinal) {
-    const row = document.createElement("div"); row.className = "row";
-    const head = document.createElement("div"); head.className = "head";
-    const l = document.createElement("span"); l.textContent = label;
-    const v = document.createElement("span"); v.className = "val"; v.textContent = "--";
-    head.append(l, v);
-    const inp = document.createElement("input"); inp.type = "range"; inp.min = 0; inp.max = max; inp.step = 1; inp.disabled = true;
-    inp.setAttribute("aria-label", label);
-    const c = { input: inp, val: v, fmt, label: l, dragging: false };
+  const controls = new Map(); // key -> { input, read, fmt, dragging }
+  function makeRange(parent, key, max, fmt, aria, onInput, onFinal, readEl) {
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.className = "range"; inp.min = 0; inp.max = max; inp.step = 1; inp.disabled = true; inp.value = 0;
+    inp.setAttribute("aria-label", aria);
+    const c = { input: inp, fmt, read: readEl, dragging: false, aria };
     inp.addEventListener("pointerdown", () => { c.dragging = true; });
-    const end = () => { setTimeout(() => { c.dragging = false; }, 600); };
+    const end = () => setTimeout(() => { c.dragging = false; }, 600);
     inp.addEventListener("pointerup", end); inp.addEventListener("pointercancel", end);
-    inp.addEventListener("input", () => { v.textContent = fmt(+inp.value); onInput(+inp.value); });
-    inp.addEventListener("change", () => { onFinal(+inp.value); });
-    row.append(head, inp); parent.append(row);
+    inp.addEventListener("input", () => { paint(inp); if (readEl) readEl.textContent = fmt(+inp.value); inp.setAttribute("aria-valuetext", fmt(+inp.value)); onInput(+inp.value); });
+    inp.addEventListener("change", () => onFinal(+inp.value));
+    parent.append(inp);
     controls.set(key, c);
+    paint(inp);
     return c;
   }
+  function setControl(key, raw, disabled) {
+    const c = controls.get(key); if (!c) return;
+    c.input.disabled = !!disabled || raw === undefined;
+    if (raw !== undefined && !c.dragging) { c.input.value = raw; paint(c.input); if (c.read) c.read.textContent = c.fmt(raw); c.input.setAttribute("aria-valuetext", c.fmt(raw)); }
+  }
 
-  // Only the channels the engineer has sent to this mix (Qu "mix assign"), unless the engineer chose "show all".
-  // If the desk never reported assignments, fall back to channels with a send level above minus infinity.
+  function channelCard(idx, name, subtitle, locked) {
+    const card = document.createElement("section");
+    card.className = "channel" + (locked ? " locked" : "");
+    card.setAttribute("aria-label", name + " mix control");
+    const top = document.createElement("div"); top.className = "ch-top";
+    const t = document.createElement("div"); t.className = "ch-title";
+    const av = document.createElement("div"); av.className = "avatar c" + (idx % 4); av.textContent = initials(name);
+    const tx = document.createElement("div"); const s1 = document.createElement("strong"); s1.textContent = name; const s2 = document.createElement("small"); s2.textContent = subtitle;
+    tx.append(s1, s2); t.append(av, tx);
+    const val = document.createElement("div"); val.className = "ch-db"; val.textContent = "--";
+    top.append(t, val); card.append(top);
+    return { card, val };
+  }
+  function panRow(card, key, aria, onInput, onFinal, locked) {
+    const row = document.createElement("div"); row.className = "pan";
+    const l = document.createElement("label"); l.textContent = "Pan";
+    const v = document.createElement("span"); v.className = "pan-val"; v.textContent = "C";
+    row.append(l);
+    makeRange(row, key, 74, pan, aria + " stereo position", onInput, onFinal, v);
+    row.append(v); card.append(row);
+  }
+
+  // ---------- master area (shared by both modes)
+  function buildMaster(onInput, onFinal) {
+    $("master").textContent = "";
+    makeRange($("master"), "master", 127, db, "Overall volume", onInput, onFinal, $("masterRead"));
+  }
+
+  // ===================== personal (digital) mix: levels live in the hub
+  let dBuilt = "";
+  function renderDigital() {
+    const d = state.dmix; if (!d) return;
+    if (state.slot && state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; }
+    const sig = d.channels.map((c) => c.input + ":" + c.max + ":" + c.locked + ":" + c.name).join(",");
+    if (sig !== dBuilt) {
+      dBuilt = sig; controls.clear();
+      buildMaster((v) => sendThrottled("master", "/api/dmix", { op: "master", value: v }), (v) => post("/api/dmix", { op: "master", value: v }));
+      const box = $("sources"); box.textContent = "";
+      d.channels.forEach((c, i) => {
+        const { card, val } = channelCard(i, c.name, c.locked ? "Locked by your engineer" : "Input " + c.input, c.locked);
+        makeRange(card, "l" + c.input, c.max, db, c.name + " level; engineer maximum " + db(c.max),
+          (v) => sendThrottled("l" + c.input, "/api/dmix", { op: "level", input: c.input, value: v }),
+          (v) => post("/api/dmix", { op: "level", input: c.input, value: v }), val);
+        const lab = document.createElement("div"); lab.className = "labels";
+        for (const t of ["Off", "0 dB", "Max " + db(c.max)]) { const s = document.createElement("span"); s.textContent = t; lab.append(s); }
+        card.append(lab);
+        panRow(card, "p" + c.input, c.name,
+          (v) => sendThrottled("p" + c.input, "/api/dmix", { op: "pan", input: c.input, value: v }),
+          (v) => post("/api/dmix", { op: "pan", input: c.input, value: v }), c.locked);
+        if (c.locked) { const n = document.createElement("div"); n.className = "locknote"; n.textContent = "This input is locked by your engineer."; card.append(n); }
+        box.append(card);
+      });
+      $("inputCount").textContent = d.channels.length + (d.channels.length === 1 ? " input" : " inputs");
+      if (!d.channels.length) { const n = document.createElement("div"); n.className = "card"; n.innerHTML = '<div class="eyebrow">No inputs yet</div><h2 style="font-size:17px;margin:8px 0 4px">Nothing has been added to your mix.</h2><p style="color:var(--muted);margin:0">Ask the sound engineer to choose the instruments you can hear.</p>'; box.append(n); }
+    }
+    setControl("master", d.master, !online);
+    for (const c of d.channels) { setControl("l" + c.input, c.level, !online || c.locked); setControl("p" + c.input, c.pan, !online || c.locked); }
+    muteUi(d.muted, !online);
+  }
+
+  // ===================== desk mix: the console's own Mix bus (controlled over MIDI)
+  let kBuilt = "";
   function visibleSources(m) {
     const bus = slot.busIndex, masterAddr = 0x60 + bus;
     const rank = (a) => (a >= 0x20 && a <= 0x42 ? 0 : 1);
@@ -163,117 +282,85 @@
     const withLevel = all.filter((s) => (m.params[s.address + ":32:" + bus] || 0) > 0);
     return withLevel.length ? withLevel : all;
   }
-
-  let builtFor = "";
-  function build() {
-    const m = state.mixer, bus = slot.busIndex, stereo = slot.stereo;
-    const masterAddr = 0x60 + bus;
+  function renderDesk() {
+    const m = state.mixer, bus = slot.busIndex, stereo = slot.stereo, masterAddr = 0x60 + bus;
+    if (state.slot) { if (state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; } if (typeof state.slot.showAll === "boolean") slot.showAll = state.slot.showAll; }
+    const ready = m.phase === "ready" && online;
     const sources = visibleSources(m);
     const sig = sources.map((s) => s.address).join(",") + "|" + bus;
-    if (sig === builtFor) return;
-    builtFor = sig; controls.clear();
-    $("master").textContent = "";
-    makeSlider($("master"), "master", "Output level", 127, db,
-      (v) => sendThrottled("master", { operation: "monitorMasterFader", busIndex: bus, value: v }),
-      (v) => api("POST", "/api/command", { operation: "monitorMasterFader", busIndex: bus, value: v }).catch(showErr));
-    const box = $("sources"); box.textContent = "";
-    if (!sources.length) { const n = document.createElement("div"); n.className = "note"; n.textContent = m.phase === "ready" ? "Nothing has been sent to your mix yet. Ask the sound engineer." : "Waiting for the console..."; box.append(n); }
-    for (const s of sources) {
-      makeSlider(box, "s" + s.address, s.label, 127, db,
-        (v) => sendThrottled("s" + s.address, { operation: "sendLevel", address: s.address, busIndex: bus, value: v }),
-        (v) => api("POST", "/api/command", { operation: "sendLevel", address: s.address, busIndex: bus, value: v }).catch(showErr));
-      if (stereo) makeSlider(box, "p" + s.address, "Pan", 74, pan,
-        (v) => sendThrottled("p" + s.address, { operation: "sendPan", address: s.address, busIndex: bus, value: v }),
-        (v) => api("POST", "/api/command", { operation: "sendPan", address: s.address, busIndex: bus, value: v }).catch(showErr));
+    if (sig !== kBuilt) {
+      kBuilt = sig; controls.clear();
+      buildMaster((v) => sendThrottled("master", "/api/command", { operation: "monitorMasterFader", busIndex: bus, value: v }),
+        (v) => post("/api/command", { operation: "monitorMasterFader", busIndex: bus, value: v }));
+      const box = $("sources"); box.textContent = "";
+      sources.forEach((s, i) => {
+        const { card, val } = channelCard(i, s.label, "On the desk", false);
+        makeRange(card, "s" + s.address, 127, db, s.label + " level",
+          (v) => sendThrottled("s" + s.address, "/api/command", { operation: "sendLevel", address: s.address, busIndex: bus, value: v }),
+          (v) => post("/api/command", { operation: "sendLevel", address: s.address, busIndex: bus, value: v }), val);
+        if (stereo) panRow(card, "p" + s.address, s.label,
+          (v) => sendThrottled("p" + s.address, "/api/command", { operation: "sendPan", address: s.address, busIndex: bus, value: v }),
+          (v) => post("/api/command", { operation: "sendPan", address: s.address, busIndex: bus, value: v }));
+        box.append(card);
+      });
+      $("inputCount").textContent = sources.length + (sources.length === 1 ? " input" : " inputs");
+      if (!sources.length) { const n = document.createElement("div"); n.className = "card"; n.innerHTML = '<div class="eyebrow">No inputs yet</div><h2 style="font-size:17px;margin:8px 0 4px">' + (m.phase === "ready" ? "Nothing has been sent to your mix." : "Waiting for the console...") + '</h2><p style="color:var(--muted);margin:0">Ask the sound engineer to choose the instruments you can hear.</p>'; box.append(n); }
     }
+    const mst = m.strips.find((s) => s.address === masterAddr);
+    setControl("master", mst && mst.fader != null ? mst.fader : undefined, !ready);
+    for (const s of sources) { setControl("s" + s.address, m.params[s.address + ":32:" + bus], !ready); setControl("p" + s.address, m.params[s.address + ":22:" + bus], !ready); }
+    muteUi(!!(mst && mst.muted), !ready || !mst || mst.muted == null);
+    if (online) setPill(ready ? "ok" : (m.phase === "offline" || m.phase === "error" ? "danger" : "warn"), ready ? "Mixer online" : (m.phase === "offline" || m.phase === "error" ? "Console offline" : m.message));
   }
 
-  // ---------- personal (digital) mix: levels live in the hub, nothing is sent to the desk
-  let dBuilt = "";
-  function dmixSend(body) { return api("POST", "/api/dmix", body).catch(showErr); }
-  function renderDigital() {
-    const d = state.dmix; if (!d) return;
-    if (state.slot) { if (state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; } }
-    setPill("ok", "Connected");
-    const sig = d.channels.map((c) => c.input + ":" + c.max + ":" + c.locked + ":" + c.name).join(",");
-    if (sig !== dBuilt) {
-      dBuilt = sig; controls.clear();
-      $("master").textContent = "";
-      makeSlider($("master"), "master", "Overall volume", 127, db,
-        (v) => sendThrottled("master", { _dmix: 1, op: "master", value: v }),
-        (v) => dmixSend({ op: "master", value: v }));
-      const box = $("sources"); box.textContent = "";
-      if (!d.channels.length) { const n = document.createElement("div"); n.className = "note"; n.textContent = "Nothing has been added to your mix yet. Ask the sound engineer."; box.append(n); }
-      for (const c of d.channels) {
-        const lab = c.name + (c.locked ? " (locked)" : "");
-        const lv = makeSlider(box, "l" + c.input, lab, c.max, db,
-          (v) => sendThrottled("l" + c.input, { _dmix: 1, op: "level", input: c.input, value: v }),
-          (v) => dmixSend({ op: "level", input: c.input, value: v }));
-        const pn = makeSlider(box, "p" + c.input, "Pan", 74, pan,
-          (v) => sendThrottled("p" + c.input, { _dmix: 1, op: "pan", input: c.input, value: v }),
-          (v) => dmixSend({ op: "pan", input: c.input, value: v }));
-        if (c.locked) { lv.input.dataset.locked = "1"; pn.input.dataset.locked = "1"; }
-      }
-    }
-    const setD = (key, raw, locked) => { const c = controls.get(key); if (!c) return; c.input.disabled = !!locked; if (!c.dragging) { c.input.value = raw; c.val.textContent = c.fmt(raw); } };
-    setD("master", d.master, false);
-    for (const c of d.channels) { setD("l" + c.input, c.level, c.locked); setD("p" + c.input, c.pan, c.locked); }
-    const mb = $("mute"); mb.disabled = false; mb.classList.toggle("muted-on", d.muted);
-    mb.textContent = d.muted ? "MUTED (tap to unmute)" : "Mute everything"; mb.setAttribute("aria-pressed", String(d.muted));
-    $("mutenote").textContent = "Only changes what you hear.";
+  function muteUi(muted, disabled) {
+    const m = $("mute"); m.checked = muted; m.disabled = !!disabled;
+    $("muteState").textContent = muted ? "ON" : "Off"; $("muteState").className = "state" + (muted ? " on" : "");
+    $("mutenote").textContent = muted ? "MUTED. Tap to hear your mix again." : "Your mix is playing normally.";
   }
+  $("mute").addEventListener("change", () => {
+    const want = $("mute").checked;
+    if (slot.mode === "digital") post("/api/dmix", { op: "mute", value: want });
+    else post("/api/command", { operation: "monitorMasterMute", busIndex: slot.busIndex, muted: want });
+  });
 
   function render() {
-    if (slot.mode === "digital") return renderDigital();
-    const m = state.mixer, bus = slot.busIndex, masterAddr = 0x60 + bus;
-    if (state.slot) { if (state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; } if (typeof state.slot.showAll === "boolean") slot.showAll = state.slot.showAll; }
-    build();
-    ready = m.phase === "ready";
-    setPill(ready ? "ok" : "", ready ? "Mixer online" : m.phase === "offline" || m.phase === "error" ? "Console offline. Controls locked." : m.message);
-    const set = (key, raw) => {
-      const c = controls.get(key); if (!c) return;
-      c.input.disabled = !ready || raw === undefined;
-      if (raw !== undefined && !c.dragging) { c.input.value = raw; c.val.textContent = c.fmt(raw); }
-    };
-    const mst = m.strips.find((s) => s.address === masterAddr);
-    set("master", mst && mst.fader != null ? mst.fader : undefined);
-    const mb = $("mute"); mb.disabled = !ready || !mst || mst.muted == null;
-    mb.classList.toggle("muted-on", !!(mst && mst.muted)); mb.textContent = mst && mst.muted ? "MONITOR MUTED (tap to unmute)" : "Mute monitor";
-    mb.setAttribute("aria-pressed", String(!!(mst && mst.muted)));
-    for (const s of visibleSources(m)) {
-      set("s" + s.address, m.params[s.address + ":32:" + bus]);
-      set("p" + s.address, m.params[s.address + ":22:" + bus]);
-    }
+    $("content").hidden = false;
+    $("offline").hidden = online;
+    if (slot.mode === "digital") { renderDigital(); if (online) setPill("ok", "Connected"); }
+    else renderDesk();
   }
-  $("mute").addEventListener("click", () => {
-    if (slot.mode === "digital") { dmixSend({ op: "mute", value: !(state.dmix && state.dmix.muted) }); return; }
-    const mst = state.mixer.strips.find((s) => s.address === 0x60 + slot.busIndex);
-    api("POST", "/api/command", { operation: "monitorMasterMute", busIndex: slot.busIndex, muted: !(mst && mst.muted) }).catch(showErr);
-  });
 
   async function poll() {
     if (polling) return; polling = true;
     while (polling) {
       try {
         const r = await api("GET", "/api/state?since=" + rev);
-        if (!r.unchanged) { state = r; rev = r.rev; render(); }
-        else if (state) { /* still online */ }
+        online = true;
+        if (!r.unchanged) { state = r; rev = r.rev; }
+        if (state) render();
       } catch (e) {
         if (e.status === 401) { revoked(); return; }
-        setPill("bad", "Gateway unreachable. Controls locked.");
-        for (const c of controls.values()) c.input.disabled = true;
+        online = false;
+        setPill("danger", "Gateway unreachable");
+        if (state) { $("offline").hidden = false; for (const c of controls.values()) c.input.disabled = true; $("mute").disabled = true; }
       }
       await new Promise((r) => setTimeout(r, 700));
     }
   }
 
   // ---------- audio (WebRTC, receive only)
-  let pc = null, wantAudio = false, retryTimer = null, meterTimer = null;
+  let pc = null, wantAudio = false, retryTimer = null, meterTimer = null, hist = new Array(20).fill(0);
   const note = (t) => { $("audionote").textContent = t; };
+  function drawWave() {
+    const w = $("wave");
+    if (!w.children.length) for (let i = 0; i < 20; i++) w.append(document.createElement("i"));
+    [...w.children].forEach((el, i) => { const v = hist[i] || 0; el.style.height = Math.max(3, Math.min(100, v)) + "%"; el.className = v > 85 ? "hot" : ""; });
+  }
   async function startAudio() {
     wantAudio = true;
-    if (!window.RTCPeerConnection) { note("This browser cannot play live audio."); return; }
-    $("listen").disabled = true; note("Connecting audio...");
+    if (!window.RTCPeerConnection) { note("This browser cannot play live audio."); setAudioPill("danger", "Not supported"); return; }
+    $("listen").disabled = true; note("Connecting audio..."); setAudioPill("warn", "Connecting");
     try {
       closePc();
       pc = new RTCPeerConnection({ iceServers: [] });
@@ -282,12 +369,12 @@
         const p = $("player"); p.srcObject = ev.streams[0] || new MediaStream([ev.track]);
         try { ev.receiver.jitterBufferTarget = 20; } catch (e) {}
         try { ev.receiver.playoutDelayHint = 0; } catch (e) {}
-        p.play().catch(() => note("Tap 'Start listening' again to allow audio."));
+        p.play().catch(() => note("Tap to allow audio."));
       };
       pc.onconnectionstatechange = () => {
         const s = pc && pc.connectionState;
-        if (s === "connected") { note("Listening. Keep this page open and the screen on."); $("listen").textContent = "Listening (tap to restart)"; $("listen").disabled = false; startMeter(); }
-        if ((s === "failed" || s === "disconnected") && wantAudio) { note("Audio dropped. Reconnecting..."); scheduleRetry(); }
+        if (s === "connected") { note("Listening. Keep this page open."); setAudioPill("ok", "Listening"); $("listen").textContent = "Listening (tap to restart)"; $("listen").className = "btn listening"; $("listen").disabled = false; startMeter(); }
+        if ((s === "failed" || s === "disconnected") && wantAudio) { note("Audio dropped. Trying to reconnect..."); setAudioPill("warn", "Reconnecting"); scheduleRetry(); }
       };
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -296,49 +383,54 @@
       await pc.setRemoteDescription({ type: "answer", sdp: r.sdp });
       requestWake();
     } catch (e) {
-      note(e.status === 501 ? "Live audio is not enabled on this gateway. You can still control your mix." : "Audio unavailable: " + e.message);
-      $("listen").disabled = false; if (e.status !== 501 && wantAudio) scheduleRetry(4000);
+      if (e.status === 501) { note("You can still adjust your mix, but audio playback is not enabled on this hub."); setAudioPill("danger", "Audio unavailable"); $("listen").disabled = true; $("audioSub").textContent = "Audio is not enabled on this hub."; wantAudio = false; return; }
+      note("Audio unavailable: " + e.message); setAudioPill("danger", "Unavailable");
+      $("listen").disabled = false; if (wantAudio) scheduleRetry(4000);
     }
   }
   function scheduleRetry(ms = 1500) { clearTimeout(retryTimer); retryTimer = setTimeout(() => { if (wantAudio) startAudio(); }, ms); }
   function closePc() { clearInterval(meterTimer); if (pc) { try { pc.close(); } catch (e) {} pc = null; } }
   function stopAudio(silent) { wantAudio = false; clearTimeout(retryTimer); closePc(); if (!silent) api("POST", "/api/audio/hangup", {}).catch(() => {}); }
-  // Delay estimate = network (RTT/2) + the phone's jitter buffer + ~20 ms for capture/encode. It excludes the desk's USB
-  // buffer and the phone's own audio output, so real delay is a little higher.
+
+  // Delay estimate = network (RTT/2) + jitter buffer + ~20 ms capture/encode. Excludes the desk's USB buffer and
+  // the phone's own output (Bluetooth adds 100-250 ms or more on top).
   let latSmooth = null, tick = 0;
   function startMeter() {
-    clearInterval(meterTimer); $("meterwrap").hidden = false; latSmooth = null;
+    clearInterval(meterTimer); $("wave").hidden = false; latSmooth = null; hist = new Array(20).fill(0);
     meterTimer = setInterval(async () => {
       if (!pc) return;
       try {
-        const st = await pc.getStats(); let rtt = null, buf = null;
+        const st = await pc.getStats(); let rtt = null, buf = null, lvl = 0;
         st.forEach((r) => {
           if (r.type === "inbound-rtp" && r.kind === "audio") {
-            if (typeof r.audioLevel === "number") $("meter").style.width = Math.min(100, Math.round(Math.sqrt(r.audioLevel) * 100)) + "%";
+            if (typeof r.audioLevel === "number") lvl = Math.min(100, Math.round(Math.sqrt(r.audioLevel) * 100));
             if (r.jitterBufferEmittedCount > 0) buf = (r.jitterBufferDelay / r.jitterBufferEmittedCount) * 1000;
           }
           if (r.type === "candidate-pair" && r.nominated && typeof r.currentRoundTripTime === "number") rtt = r.currentRoundTripTime * 1000;
         });
+        hist.push(lvl); hist.shift(); drawWave();
         if (++tick % 7 === 0 && buf !== null) {
           const net = rtt === null ? 0 : rtt / 2, total = net + buf + 20;
           latSmooth = latSmooth === null ? total : latSmooth * 0.7 + total * 0.3;
-          const l = $("lat"); l.hidden = false;
-          l.textContent = "Delay about " + Math.round(latSmooth) + " ms (network " + Math.round(net) + ", buffer " + Math.round(buf) + ")";
+          const l = $("lat"); l.hidden = false; l.textContent = "~" + Math.round(latSmooth) + " ms delay";
+          l.title = "network " + Math.round(net) + " ms, buffer " + Math.round(buf) + " ms";
         }
       } catch (e) {}
     }, 150);
   }
   let wake = null;
   async function requestWake() { try { if ("wakeLock" in navigator) wake = await navigator.wakeLock.request("screen"); } catch (e) {} }
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (wantAudio) requestWake(); } });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && wantAudio) requestWake(); });
   $("listen").addEventListener("click", startAudio);
+  $("btClose").addEventListener("click", () => { $("btHint").hidden = true; try { sessionStorage.setItem("qu32bt", "1"); } catch (e) {} });
+  try { if (sessionStorage.getItem("qu32bt")) $("btHint").hidden = true; } catch (e) {}
 
   (async () => {
     try {
       if (!(await join())) return;
-      $("main").hidden = false; setPill("", "Connecting...");
+      setPill("warn", "Connecting...");
       poll();
-    } catch (e) { setPill("bad", "Gateway unreachable"); setTimeout(() => location.reload(), 4000); }
+    } catch (e) { setPill("danger", "Gateway unreachable"); setTimeout(() => location.reload(), 4000); }
   })();
 })();
 </script>

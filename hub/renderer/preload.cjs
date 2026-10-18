@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("hub", {
   talk: call("hub:talk"),
   copy: call("hub:copy"),
   openDataFolder: call("hub:openDataFolder"),
+  openUrl: call("hub:openUrl"),
+  qrSheet: call("hub:qrSheet"),
   mixAssign: call("hub:mix:assign"),
   mixChannel: call("hub:mix:channel"),
   mixMaster: call("hub:mix:master"),

@@ -14,6 +14,7 @@ Permissions are enforced on the gateway from the account (role + assigned bus). 
 |---|---|
 | `sdk/` | `@qu32/sdk`: client SDK + Qu MIDI protocol library (built from the official V1.9 protocol PDF) |
 | `gateway/` | Node.js HTTPS gateway, accounts, policy, audit log, simulated Qu-32 for tests |
+| `docs/ui-design/` | The UI/UX design package (design system, flows, clickable previews) the Hub and musician page now follow |
 | `hub/` | **QU32 Hub**: Windows desktop app. Runs the gateway, QR phone monitors, USB audio streaming, talkback |
 | `mobile/` | Expo / React Native app (engineer + musician UIs) |
 | `dist-packages/` | Built `qu32-sdk-0.1.0.tgz` (install anywhere with `npm install ./qu32-sdk-0.1.0.tgz`) |

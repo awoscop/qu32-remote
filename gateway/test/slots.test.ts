@@ -179,7 +179,7 @@ describe("musician-only (HTTP) port", () => {
     expect(ok.status).toBe(200);
     expect(ok.headers.get("content-type")).toMatch(/text\/html/);
     expect(ok.headers.get("content-security-policy")).toContain("default-src 'self'");
-    expect(await ok.text()).toContain("My Monitor");
+    expect(await ok.text()).toContain("My Mix");
     expect((await fetch(`${musBase}/m/short`)).status).toBe(404);
   });
 });

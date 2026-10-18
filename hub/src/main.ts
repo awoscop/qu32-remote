@@ -264,6 +264,22 @@ function registerIpc() {
     await applyAudio();
     return true;
   });
+  ipcMain.handle("hub:openUrl", async (_e, url: string) => {
+    // only our own musician links may be opened (the "phone preview" button)
+    const base = `http://${settings.lanIp || privateIps()[0] || ""}:${settings.httpPort}/m/`;
+    if (typeof url !== "string" || !url.startsWith(base)) throw new Error("Not a monitor link");
+    await shell.openExternal(url);
+  });
+  ipcMain.handle("hub:qrSheet", async () => {
+    const st = await uiState();
+    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+    const cards = st.slots.filter((s) => s.enabled).map((s) => `<div class="c"><h2>${esc(s.name || "Monitor " + s.id)}</h2><div class="m">Monitor ${s.id} · ${esc(s.bus)}</div><img src="${s.qr}" width="220" height="220"><div class="u">Scan with the phone camera</div></div>`).join("");
+    const html = `<!doctype html><meta charset="utf-8"><title>QU32 monitor QR codes</title><style>body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#111}h1{font-size:18px;margin:0 0 4px}p{margin:0 0 16px;color:#555;font-size:12px}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.c{border:1px solid #bbb;border-radius:10px;padding:14px;text-align:center;break-inside:avoid}.c h2{margin:0;font-size:20px}.m{color:#555;font-size:12px;margin-bottom:8px}.u{font-size:12px;color:#333;margin-top:6px}button{margin:0 0 16px;padding:8px 16px;font-size:14px}@media print{button{display:none}}</style><button onclick="window.print()">Print</button><h1>QU32 Hub: monitor QR codes</h1><p>Private. Anyone with a code can open that musician's mix. Do not post these publicly. Make a new QR in the Hub to cancel a code.</p><div class="g">${cards}</div>`;
+    const win = new BrowserWindow({ width: 900, height: 800, title: "QU32 monitor QR codes", webPreferences: { sandbox: true, contextIsolation: true } });
+    win.setMenuBarVisibility(false);
+    win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+    await win.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+  });
   ipcMain.handle("hub:copy", (_e, text: string) => { clipboard.writeText(String(text)); });
   ipcMain.handle("hub:openDataFolder", () => shell.openPath(path.join(app.getPath("userData"), "data")));
 }
@@ -283,7 +299,7 @@ function createWindows() {
     webPreferences: { preload: path.join(rendererDir, "preload.cjs"), contextIsolation: true, sandbox: true },
   });
   mainWin.setMenuBarVisibility(false);
-  void mainWin.loadFile(path.join(rendererDir, "index.html"));
+  void mainWin.loadFile(path.join(rendererDir, "index.html"), process.env.QU32_VIEW ? { hash: process.env.QU32_VIEW } : undefined);
   mainWin.on("blur", () => { if (talkback.active) { talkback.stop(); void rpc("talk", { on: false }).catch(() => {}); } });
   mainWin.on("closed", () => app.quit());
   mainWin.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -327,6 +343,25 @@ async function boot() {
     const dump = process.env.QU32_DUMP;
     setInterval(async () => { try { const st = await uiState(); fs.writeFileSync(dump, JSON.stringify({ ...st, slots: st.slots.map((x) => ({ ...x, qr: x.qr ? "(png)" : "" })) }, null, 2)); } catch { /* ignore */ } }, 500);
     setTimeout(async () => { try { fs.writeFileSync(dump + ".png", (await mainWin!.webContents.capturePage()).toPNG()); } catch { /* ignore */ } }, Number(process.env.QU32_SHOT_MS ?? 6000));
+    if (process.env.QU32_SHOT_VIEWS) {
+      setTimeout(async () => {
+        for (const v of process.env.QU32_SHOT_VIEWS!.split(",")) {
+          try {
+            await mainWin!.webContents.executeJavaScript(`open(${JSON.stringify(v)})`);
+            await new Promise((x) => setTimeout(x, 900));
+            fs.writeFileSync(dump + "." + v + ".png", (await mainWin!.webContents.capturePage()).toPNG());
+          } catch { /* ignore */ }
+        }
+      }, Number(process.env.QU32_SHOT_MS ?? 6000) + 1500);
+    }
+  }
+  if (process.env.QU32_UI_TEST) {
+    // test hook: run a script file inside the admin window and write its JSON result next to it
+    setTimeout(async () => {
+      const f = process.env.QU32_UI_TEST!;
+      try { const r = await mainWin!.webContents.executeJavaScript(fs.readFileSync(f, "utf8"), true); fs.writeFileSync(f + ".out", JSON.stringify(r, null, 2)); }
+      catch (e) { fs.writeFileSync(f + ".out", "ERROR " + (e as Error).message); }
+    }, Number(process.env.QU32_UI_TEST_AT ?? 8) * 1000);
   }
   if (process.env.QU32_SELFTEST_TALK) {
     // test hook: N seconds after boot, hold talkback to monitor 1 (personal mix) for 8 s using the PC microphone
