@@ -57,6 +57,30 @@
     </section>
   </div>
 
+  <section class="card" id="showCard">
+    <div class="row between">
+      <h2>Show</h2>
+      <div class="row"><b id="showName">Untitled show</b><span id="showDirty" class="muted"></span></div>
+    </div>
+    <div class="row">
+      <input id="showNameInput" placeholder="Show name, e.g. Sunday AM" maxlength="80" aria-label="Show name">
+      <button id="showSave" class="primary">Save show</button>
+      <select id="showList" aria-label="Saved shows"></select>
+      <button id="showLoad">Open</button>
+      <button id="showDelete" class="small">Delete</button>
+      <button id="showNew" class="small">New</button>
+      <button id="showExport" class="small">Export...</button>
+      <button id="showImport" class="small">Import...</button>
+    </div>
+    <p class="muted">A show remembers which inputs each musician gets, their starting levels and limits. Musicians keep the same QR code when you open another show, and their phones update live.</p>
+  </section>
+
+  <section class="card" id="matrixCard">
+    <h2>Mix designer: which inputs each musician hears</h2>
+    <p class="muted">Tick an input to put it in that musician's personal mix. Each musician can then raise or lower only those inputs on their phone, up to the limit you set under their card. Inputs are read from the same-numbered USB channel (set the desk's USB send to pre-fader direct out so your own fader moves never change their mix).</p>
+    <div class="matrixwrap"><table id="matrix"></table></div>
+  </section>
+
   <section class="card">
     <div class="row between">
       <h2>Monitors</h2>

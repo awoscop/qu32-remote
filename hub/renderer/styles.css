@@ -42,3 +42,17 @@ code { background:var(--bg); padding:2px 8px; border-radius:6px; user-select:all
 details { margin-top:10px; } summary { cursor:pointer; color:var(--muted); font-size:13px; }
 footer { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px; }
 [hidden] { display: none !important; }
+
+.matrixwrap { overflow:auto; max-height:420px; border:1px solid var(--border); border-radius:10px; }
+#matrix { border-collapse:collapse; width:100%; font-size:13px; }
+#matrix th, #matrix td { padding:5px 10px; border-bottom:1px solid rgba(255,255,255,.06); text-align:center; white-space:nowrap; }
+#matrix th { position:sticky; top:0; background:var(--surface2); z-index:1; color:var(--accent); font-weight:600; }
+#matrix td:first-child, #matrix th:first-child { text-align:left; position:sticky; left:0; background:var(--surface); z-index:1; }
+#matrix th:first-child { z-index:2; background:var(--surface2); }
+#matrix input[type=checkbox] { width:18px; height:18px; accent-color:var(--accent); }
+.levels { border-top:1px solid var(--border); padding-top:8px; }
+.levels summary { cursor:pointer; color:var(--text); font-size:13px; }
+.lvrow { display:grid; grid-template-columns:minmax(70px,1fr) 1.4fr auto auto; gap:6px; align-items:center; padding:3px 0; font-size:12px; }
+.lvrow input[type=range] { width:100%; accent-color:var(--accent); min-height:0; padding:0; }
+.lvrow select { min-height:28px; padding:2px 4px; }
+.deskonly { display:contents; }

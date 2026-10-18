@@ -7,6 +7,7 @@ import { ensureTls } from "./cert.js";
 import type { Config } from "./config.js";
 import type { AudioBridge } from "./audio.js";
 import { QuLink } from "./mixer.js";
+import type { DigitalMix } from "./dmix.js";
 import type { Slots } from "./slots.js";
 import { authorize, filterSnapshot } from "./policy.js";
 import { encodeCommand, MONITOR_BUSES, type Command, type User } from "./qu.js";
@@ -28,10 +29,19 @@ export interface Gateway {
 }
 
 const MONITOR_PAGE = new URL("../web/monitor.html", import.meta.url);
-const MUSICIAN_PATHS = new Set(["/api/health", "/api/join", "/api/session", "/api/logout", "/api/state", "/api/command", "/api/audio/offer", "/api/audio/hangup"]);
+const MUSICIAN_PATHS = new Set(["/api/health", "/api/join", "/api/session", "/api/logout", "/api/state", "/api/command", "/api/audio/offer", "/api/audio/hangup", "/api/dmix"]);
 
-export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slots?: Slots; audio?: AudioBridge; ownsLink?: boolean }): Gateway {
-  const { auth, link, slots, audio } = deps;
+export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slots?: Slots; audio?: AudioBridge; mix?: DigitalMix; ownsLink?: boolean }): Gateway {
+  const { auth, link, slots, audio, mix } = deps;
+  const revNow = () => link.rev + (mix?.rev ?? 0);
+  const dmixFor = (slotId: number) => {
+    const m = mix!.get(slotId);
+    const names = link.snapshot().strips;
+    return {
+      master: m.master, muted: m.muted,
+      channels: m.channels.map((c) => ({ ...c, name: names.find((s) => s.address === 0x1f + c.input)?.label ?? `CH ${c.input}` })),
+    };
+  };
   const buckets = new Map<string, { t: number; n: number }>();
   const settingsFile = path.join(cfg.dataDir, "settings.json");
   const auditFile = path.join(cfg.dataDir, "audit.log");
@@ -117,7 +127,7 @@ export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slo
       const j = slots.join(b.token);
       if (!j) { auth.noteFailure(ip); throw new HttpError(401, "This QR code is no longer valid. Ask the sound engineer for a new one."); }
       const bus = MONITOR_BUSES[j.user.busIndex!]!;
-      return send(res, 200, { token: j.token, user: j.user, slot: { id: j.slot.id, name: j.slot.name, busIndex: bus.busIndex, busName: bus.name, stereo: bus.stereo, showAll: j.slot.showAll } });
+      return send(res, 200, { token: j.token, user: j.user, slot: { id: j.slot.id, name: j.slot.name, busIndex: bus.busIndex, busName: bus.name, stereo: bus.stereo, showAll: j.slot.showAll, mode: j.slot.mode } });
     }
 
     if (method === "POST" && p === "/api/login") {
@@ -139,8 +149,8 @@ export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slo
 
     if (method === "GET" && p === "/api/state") {
       const since = Number(url.searchParams.get("since"));
-      if (since === link.rev) return send(res, 200, { unchanged: true, rev: link.rev });
-      return send(res, 200, { user, mixer: filterSnapshot(user, link.snapshot()), rev: link.rev, ...(slot ? { slot: { id: slot.id, name: slot.name, showAll: slot.showAll } } : {}), ...(user.role === "engineer" ? { sharedBuses: auth.sharedBuses() } : {}) });
+      if (since === revNow()) return send(res, 200, { unchanged: true, rev: revNow() });
+      return send(res, 200, { user, mixer: filterSnapshot(user, link.snapshot()), rev: revNow(), ...(slot ? { slot: { id: slot.id, name: slot.name, showAll: slot.showAll, mode: slot.mode } } : {}), ...(slot && mix && slot.mode === "digital" ? { dmix: dmixFor(slot.id) } : {}), ...(user.role === "engineer" ? { sharedBuses: auth.sharedBuses() } : {}) });
     }
 
     if (method === "POST" && p === "/api/command") {
@@ -155,6 +165,17 @@ export function createGateway(cfg: Config, deps: { auth: Auth; link: QuLink; slo
       if (!link.send(bytes)) throw new HttpError(503, "Console not ready");
       link.applyOptimistic(cmd);
       audit(user, { command: cmd });
+      return send(res, 200, { ok: true });
+    }
+
+    if (p === "/api/dmix") {
+      if (!slot || !mix) throw new HttpError(403, "Personal mix is available to monitor slots only");
+      if (method !== "POST") throw new HttpError(405, "POST required");
+      if (slot.mode !== "digital") throw new HttpError(409, "This monitor uses the desk mix");
+      if (!rateOk(user.username)) throw new HttpError(429, "Too many commands");
+      const b = await readJson(req);
+      if (b.op !== "level" && b.op !== "pan" && b.op !== "master" && b.op !== "mute") throw new HttpError(400, "Unknown op");
+      try { mix.userSet(slot.id, b.op, b.input, b.value); } catch (e) { throw new HttpError(400, (e as Error).message); }
       return send(res, 200, { ok: true });
     }
 

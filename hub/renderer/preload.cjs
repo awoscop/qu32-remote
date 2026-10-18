@@ -18,4 +18,13 @@ contextBridge.exposeInMainWorld("hub", {
   talk: call("hub:talk"),
   copy: call("hub:copy"),
   openDataFolder: call("hub:openDataFolder"),
+  mixAssign: call("hub:mix:assign"),
+  mixChannel: call("hub:mix:channel"),
+  mixMaster: call("hub:mix:master"),
+  showNew: call("hub:show:new"),
+  showSave: call("hub:show:save"),
+  showLoad: call("hub:show:load"),
+  showDelete: call("hub:show:delete"),
+  showExport: call("hub:show:export"),
+  showImport: call("hub:show:import"),
 });

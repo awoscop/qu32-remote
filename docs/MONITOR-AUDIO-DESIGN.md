@@ -105,3 +105,19 @@ Open (defaults in brackets):
 2. Musician page over HTTP on a dedicated AP [yes] vs HTTPS with a trusted certificate (needs a domain or installing a CA on every phone).
 3. Talkback source [PC mic first; phone mic later].
 4. Max ceiling per slot on sends [on, default 0 dB].
+
+---
+
+## 9. Digital mix and show files (added)
+
+The default mix type is now a **digital personal mix** inside the Hub, not a desk Mix bus:
+
+- The Hub reads input channels from the USB capture (input N = USB channel N, ideally pre-fader direct outs) and mixes a stereo stream per musician
+  (per-input gain and pan, a master volume, and a safety limiter before the stream is encoded).
+- The engineer assigns inputs per musician in the Mix designer and sets a start level, a maximum and an optional lock per input.
+- Musician faders move Hub gains only. Nothing is sent to the desk, so the number of musicians is not limited by the desk's 7 monitor buses (the Hub currently offers 7).
+- A **show file** (`.qu32show.json`) stores musician names, assigned inputs, levels, limits and master levels. Opening a show changes every phone live; QR codes do not change.
+- Talkback is mixed into the selected musicians' streams (PC mic, or a desk mic arriving on a USB channel), with a 6 dB duck of their mix and a 60 s cap.
+- The old **desk mix** type remains per musician.
+
+Because audio is mixed on the PC from USB channels, the engineer's desk faders do not affect musician mixes only if the desk's USB send is pre-fader.

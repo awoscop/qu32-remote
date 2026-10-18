@@ -52,14 +52,14 @@
     <audio id="player" playsinline autoplay></audio>
   </div>
 
-  <h2>Monitor master</h2>
+  <h2>Volume</h2>
   <div class="card">
     <div id="master"></div>
     <button id="mute" style="margin-top:8px">Mute monitor</button>
-    <div class="note">This is your whole monitor output.</div>
+    <div class="note" id="mutenote">This is your whole monitor output.</div>
   </div>
 
-  <h2>My mix</h2>
+  <h2>My inputs</h2>
   <div class="card" id="sources"><div class="note">Waiting for the console...</div></div>
 </main>
 
@@ -100,7 +100,9 @@
       const r = await api("POST", "/api/join", { token }, false);
       session = r.token; slot = r.slot; rev = -1;
       $("title").textContent = slot.name || slot.busName;
-      $("sub").textContent = slot.busName + (slot.stereo ? " (stereo)" : " (mono)") + " · assigned by the sound engineer. Other mixes are locked.";
+      $("sub").textContent = slot.mode === "digital"
+        ? "Your personal mix. The sound engineer chooses which inputs you get; you set how loud each one is."
+        : slot.busName + (slot.stereo ? " (stereo)" : " (mono)") + " · assigned by the sound engineer. Other mixes are locked.";
       document.title = (slot.name || slot.busName) + " - Monitor";
       return true;
     } catch (e) {
@@ -121,7 +123,11 @@
     if (!t) { t = { last: 0, timer: null, cmd }; sendTimers.set(key, t); }
     t.cmd = cmd;
     if (t.timer) return;
-    t.timer = setTimeout(() => { t.timer = null; t.last = Date.now(); api("POST", "/api/command", t.cmd).catch(showErr); }, Math.max(0, t.last + 40 - Date.now()));
+    t.timer = setTimeout(() => {
+      t.timer = null; t.last = Date.now();
+      if (t.cmd._dmix) { const b = Object.assign({}, t.cmd); delete b._dmix; api("POST", "/api/dmix", b).catch(showErr); }
+      else api("POST", "/api/command", t.cmd).catch(showErr);
+    }, Math.max(0, t.last + 40 - Date.now()));
   }
   function showErr(e) { $("audionote").textContent = e.message; }
 
@@ -182,7 +188,43 @@
     }
   }
 
+  // ---------- personal (digital) mix: levels live in the hub, nothing is sent to the desk
+  let dBuilt = "";
+  function dmixSend(body) { return api("POST", "/api/dmix", body).catch(showErr); }
+  function renderDigital() {
+    const d = state.dmix; if (!d) return;
+    if (state.slot) { if (state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; } }
+    setPill("ok", "Connected");
+    const sig = d.channels.map((c) => c.input + ":" + c.max + ":" + c.locked + ":" + c.name).join(",");
+    if (sig !== dBuilt) {
+      dBuilt = sig; controls.clear();
+      $("master").textContent = "";
+      makeSlider($("master"), "master", "Overall volume", 127, db,
+        (v) => sendThrottled("master", { _dmix: 1, op: "master", value: v }),
+        (v) => dmixSend({ op: "master", value: v }));
+      const box = $("sources"); box.textContent = "";
+      if (!d.channels.length) { const n = document.createElement("div"); n.className = "note"; n.textContent = "Nothing has been added to your mix yet. Ask the sound engineer."; box.append(n); }
+      for (const c of d.channels) {
+        const lab = c.name + (c.locked ? " (locked)" : "");
+        const lv = makeSlider(box, "l" + c.input, lab, c.max, db,
+          (v) => sendThrottled("l" + c.input, { _dmix: 1, op: "level", input: c.input, value: v }),
+          (v) => dmixSend({ op: "level", input: c.input, value: v }));
+        const pn = makeSlider(box, "p" + c.input, "Pan", 74, pan,
+          (v) => sendThrottled("p" + c.input, { _dmix: 1, op: "pan", input: c.input, value: v }),
+          (v) => dmixSend({ op: "pan", input: c.input, value: v }));
+        if (c.locked) { lv.input.dataset.locked = "1"; pn.input.dataset.locked = "1"; }
+      }
+    }
+    const setD = (key, raw, locked) => { const c = controls.get(key); if (!c) return; c.input.disabled = !!locked; if (!c.dragging) { c.input.value = raw; c.val.textContent = c.fmt(raw); } };
+    setD("master", d.master, false);
+    for (const c of d.channels) { setD("l" + c.input, c.level, c.locked); setD("p" + c.input, c.pan, c.locked); }
+    const mb = $("mute"); mb.disabled = false; mb.classList.toggle("muted-on", d.muted);
+    mb.textContent = d.muted ? "MUTED (tap to unmute)" : "Mute everything"; mb.setAttribute("aria-pressed", String(d.muted));
+    $("mutenote").textContent = "Only changes what you hear.";
+  }
+
   function render() {
+    if (slot.mode === "digital") return renderDigital();
     const m = state.mixer, bus = slot.busIndex, masterAddr = 0x60 + bus;
     if (state.slot) { if (state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; } if (typeof state.slot.showAll === "boolean") slot.showAll = state.slot.showAll; }
     build();
@@ -204,6 +246,7 @@
     }
   }
   $("mute").addEventListener("click", () => {
+    if (slot.mode === "digital") { dmixSend({ op: "mute", value: !(state.dmix && state.dmix.muted) }); return; }
     const mst = state.mixer.strips.find((s) => s.address === 0x60 + slot.busIndex);
     api("POST", "/api/command", { operation: "monitorMasterMute", busIndex: slot.busIndex, muted: !(mst && mst.muted) }).catch(showErr);
   });

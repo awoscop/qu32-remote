@@ -19,6 +19,8 @@ export interface Slot {
   usbChannel: number;
   /** Show every channel on the musician's page, not just the ones the engineer assigned to their mix. */
   showAll: boolean;
+  /** "digital": personal mix inside the Hub (default). "desk": the console's own monitor mix, controlled over MIDI. */
+  mode: "digital" | "desk";
 }
 
 interface Persisted {
@@ -51,10 +53,10 @@ export class Slots {
     this.data = d ?? { count: 0, slots: [] };
     for (let id = 1; id <= MAX_SLOTS; id++) {
       if (!this.data.slots.find((s) => s.id === id)) {
-        this.data.slots.push({ id, name: MONITOR_BUSES[id - 1]!.name, token: Slots.newToken(), enabled: true, ceiling: 0x72, usbChannel: defaultUsb(id), showAll: false });
+        this.data.slots.push({ id, name: MONITOR_BUSES[id - 1]!.name, token: Slots.newToken(), enabled: true, ceiling: 0x72, usbChannel: defaultUsb(id), showAll: false, mode: "digital" });
       }
     }
-    for (const s of this.data.slots) if (typeof s.showAll !== "boolean") s.showAll = false;
+    for (const s of this.data.slots) { if (typeof s.showAll !== "boolean") s.showAll = false; if (s.mode !== "desk" && s.mode !== "digital") s.mode = "digital"; }
     this.data.slots.sort((a, b) => a.id - b.id);
     auth.virtualCheck = (u) => this.isValidUser(u);
     this.save();
@@ -84,7 +86,7 @@ export class Slots {
     this.save();
   }
 
-  update(id: number, patch: { name?: unknown; enabled?: unknown; ceiling?: unknown; usbChannel?: unknown; showAll?: unknown }): Slot {
+  update(id: number, patch: { name?: unknown; enabled?: unknown; ceiling?: unknown; usbChannel?: unknown; showAll?: unknown; mode?: unknown }): Slot {
     const s = this.get(id);
     if (!s) throw new RangeError("No such slot");
     if (patch.name !== undefined) {
@@ -95,6 +97,11 @@ export class Slots {
       if (typeof patch.enabled !== "boolean") throw new RangeError("enabled must be boolean");
       s.enabled = patch.enabled;
       if (!s.enabled) this.auth.revoke(slotUsername(id));
+    }
+    if (patch.mode !== undefined) {
+      if (patch.mode !== "digital" && patch.mode !== "desk") throw new RangeError("mode must be digital or desk");
+      s.mode = patch.mode;
+      this.auth.revoke(slotUsername(id));
     }
     if (patch.showAll !== undefined) {
       if (typeof patch.showAll !== "boolean") throw new RangeError("showAll must be boolean");

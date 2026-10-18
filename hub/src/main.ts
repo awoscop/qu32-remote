@@ -3,12 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, clipboard, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, session, shell } from "electron";
 import QRCode from "qrcode";
 import type { AudioBridge } from "../../gateway/dist/audio.js";
 import { Auth } from "../../gateway/dist/auth.js";
 import { loadConfig, type Config } from "../../gateway/dist/config.js";
 import { QuLink } from "../../gateway/dist/mixer.js";
+import { DigitalMix, ShowStore } from "../../gateway/dist/dmix.js";
 import { createGateway, type Gateway } from "../../gateway/dist/server.js";
 import { Slots } from "../../gateway/dist/slots.js";
 import { Talkback } from "../../gateway/dist/talkback.js";
@@ -80,7 +81,7 @@ const bridge: AudioBridge = {
 };
 
 // ---------------------------------------------------------------- core services
-let auth: Auth, slots: Slots, link: QuLink, talkback: Talkback, baseCfg: Config;
+let auth: Auth, slots: Slots, link: QuLink, talkback: Talkback, baseCfg: Config, mix: DigitalMix, shows: ShowStore;
 let httpGw: Gateway | null = null, httpsGw: Gateway | null = null;
 let firstPassword: string | null = null;
 const errors: string[] = [];
@@ -94,7 +95,7 @@ async function listen(gw: Gateway): Promise<number> {
 
 async function startHttp(): Promise<void> {
   const cfg: Config = { ...baseCfg, port: settings.httpPort, insecureHttp: true, musicianOnly: true, bind: "0.0.0.0" };
-  httpGw = createGateway(cfg, { auth, link, slots, audio: bridge, ownsLink: false });
+  httpGw = createGateway(cfg, { auth, link, slots, audio: bridge, mix, ownsLink: false });
   try { await listen(httpGw); } catch (e) { pushError(`Musician port ${settings.httpPort} could not start: ${(e as Error).message}`); httpGw = null; }
 }
 
@@ -102,7 +103,7 @@ async function startHttps(): Promise<void> {
   if (httpsGw) { await httpsGw.close(); httpsGw = null; }
   const cfg: Config = { ...baseCfg, port: settings.httpsPort, insecureHttp: false, musicianOnly: false, bind: "0.0.0.0", lanIp: settings.lanIp || privateIps()[0] || "127.0.0.1" };
   try {
-    const gw = createGateway(cfg, { auth, link, slots, ownsLink: false });
+    const gw = createGateway(cfg, { auth, link, slots, mix, ownsLink: false });
     await listen(gw);
     httpsGw = gw;
     httpsInfo = `https://${cfg.lanIp}:${settings.httpsPort}`;
@@ -132,7 +133,8 @@ async function uiState() {
     const bus = MONITOR_BUSES[s.id - 1]!;
     const url = `${base}/m/${s.token}`;
     return {
-      id: s.id, name: s.name, enabled: s.enabled, ceiling: s.ceiling, usbChannel: s.usbChannel, showAll: s.showAll,
+      id: s.id, name: s.name, enabled: s.enabled, ceiling: s.ceiling, usbChannel: s.usbChannel, showAll: s.showAll, mode: s.mode,
+      mixChannels: mix.get(s.id).channels, master: mix.get(s.id).master,
       bus: bus.name, stereo: bus.stereo, url, qr: lanIp ? await qr(url) : "",
       connected: slots.connected(s.id), streaming: !!engineStatus.streaming[s.id], level: engineStatus.levels[s.id] ?? 0,
     };
@@ -145,25 +147,60 @@ async function uiState() {
     firstPassword,
     settings: { usbInId: settings.usbInId, usbOutId: settings.usbOutId, micId: settings.micId, returnChannel: settings.returnChannel, talkStrip: settings.talkStrip, talkLevel: settings.talkLevel },
     talk: { active: talkback.active, buses: talkback.buses },
+    show: { name: mix.showName, dirty: mix.dirty, list: shows.list() },
+    deskNames: Array.from({ length: 32 }, (_, i) => snap.strips.find((x) => x.address === 0x20 + i)?.label ?? `CH ${i + 1}`),
   };
 }
 
 function usbMapping() {
-  return slots.active().map((s) => ({ slotId: s.id, channel: s.usbChannel, stereo: MONITOR_BUSES[s.id - 1]!.stereo }));
+  return slots.active().filter((s) => s.mode === "desk").map((s) => ({ slotId: s.id, channel: s.usbChannel, stereo: MONITOR_BUSES[s.id - 1]!.stereo }));
 }
 
 async function applyAudio(): Promise<void> {
   try {
-    await rpc("configure", { inputId: settings.usbInId, outputId: settings.usbOutId, micId: settings.micId, returnChannel: settings.returnChannel, mapping: usbMapping() }, 20_000);
+    await rpc("configure", {
+      inputId: settings.usbInId, outputId: settings.usbOutId, micId: settings.micId, returnChannel: settings.returnChannel,
+      mapping: usbMapping(), digital: slots.active().filter((s) => s.mode === "digital").map((s) => s.id), talkChannel: settings.talkStrip - 0x1f,
+    }, 20_000);
+    await pushMix();
   } catch (e) {
     engineStatus = { ...engineStatus, error: (e as Error).message };
   }
 }
 
+function mixPayload() {
+  return {
+    slots: slots.active().filter((s) => s.mode === "digital").map((s) => {
+      const m = mix.get(s.id);
+      return { slotId: s.id, master: m.master, muted: m.muted, channels: m.channels.map((c) => ({ input: c.input, level: c.level, pan: c.pan })) };
+    }),
+  };
+}
+let mixTimer: NodeJS.Timeout | null = null;
+async function pushMix(): Promise<void> {
+  try { await rpc("setMix", mixPayload()); } catch { /* engine not ready yet; configure pushes again */ }
+}
+function schedulePushMix() {
+  if (mixTimer) return;
+  mixTimer = setTimeout(() => { mixTimer = null; void pushMix(); }, 25);
+}
+
+/** Apply a loaded show's names to the monitor slots and make sure enough slots exist. */
+function applyShowToSlots() {
+  const musicians = mix.all();
+  const need = Math.max(slots.count, ...musicians.map((m) => m.slotId));
+  if (need > slots.count) slots.setCount(need);
+  for (const m of musicians) if (m.name) slots.update(m.slotId, { name: m.name });
+}
+
 function registerIpc() {
   ipcMain.handle("hub:getState", () => uiState());
   ipcMain.handle("hub:setCount", async (_e, n: number) => { slots.setCount(n); await applyAudio(); });
-  ipcMain.handle("hub:updateSlot", async (_e, id: number, patch: Record<string, unknown>) => { slots.update(id, patch); if ("usbChannel" in patch) await applyAudio(); });
+  ipcMain.handle("hub:updateSlot", async (_e, id: number, patch: Record<string, unknown>) => {
+    slots.update(id, patch);
+    if (typeof patch.name === "string") mix.rename(id, patch.name.trim());
+    if ("usbChannel" in patch || "mode" in patch) await applyAudio();
+  });
   ipcMain.handle("hub:regenerate", (_e, id: number) => { slots.regenerate(id); void rpc("hangup", { slotId: id }).catch(() => {}); });
   ipcMain.handle("hub:setMixerHost", (_e, host: string) => {
     if (!/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(host)) throw new Error("Enter an IPv4 address like 192.168.1.60");
@@ -189,11 +226,43 @@ function registerIpc() {
     talkback.cfg.strip = settings.talkStrip; talkback.cfg.level = settings.talkLevel;
     saveSettings();
   });
-  ipcMain.handle("hub:talk", async (_e, on: boolean, buses: number[]) => {
+  ipcMain.handle("hub:talk", async (_e, on: boolean, slotIds: number[]) => {
     if (!on) { talkback.stop(); await rpc("talk", { on: false }).catch(() => {}); return { ok: true }; }
-    if (!talkback.start(buses)) return { ok: false, error: "The console is not ready, or no mix was selected." };
-    try { await rpc("talk", { on: true }); } catch (e) { talkback.stop(); return { ok: false, error: (e as Error).message }; }
+    const targets = slots.active().filter((s) => slotIds.includes(s.id) && s.enabled);
+    if (!targets.length) return { ok: false, error: "Select at least one monitor to talk to." };
+    const deskBuses = targets.filter((s) => s.mode === "desk").map((s) => s.id - 1);
+    const digital = targets.filter((s) => s.mode === "digital").map((s) => s.id);
+    if (deskBuses.length && !talkback.start(deskBuses)) return { ok: false, error: "The console is not ready, so talkback to desk-mix monitors is unavailable." };
+    try { await rpc("talk", { on: true, digital, desk: deskBuses.length > 0 }); } catch (e) { talkback.stop(); await rpc("talk", { on: false }).catch(() => {}); return { ok: false, error: (e as Error).message }; }
     return { ok: true };
+  });
+
+  // ---- personal mix + show files
+  ipcMain.handle("hub:mix:assign", (_e, slotId: number, input: number, on: boolean) => { mix.assign(slotId, input, on); });
+  ipcMain.handle("hub:mix:channel", (_e, slotId: number, input: number, patch: Record<string, unknown>) => { mix.setChannel(slotId, input, patch); });
+  ipcMain.handle("hub:mix:master", (_e, slotId: number, v: number) => { mix.userSet(slotId, "master", null, v); });
+  ipcMain.handle("hub:show:new", () => { mix.newShow(); });
+  ipcMain.handle("hub:show:save", (_e, name: string) => {
+    const n = String(name || mix.showName).trim();
+    if (!n || n === "Untitled show") throw new Error("Give the show a name first.");
+    shows.save(mix.toShow(n));
+    mix.markSaved(n);
+  });
+  ipcMain.handle("hub:show:load", async (_e, file: string) => { mix.load(shows.load(file)); applyShowToSlots(); await applyAudio(); });
+  ipcMain.handle("hub:show:delete", (_e, file: string) => { shows.remove(file); });
+  ipcMain.handle("hub:show:export", async () => {
+    const r = await dialog.showSaveDialog(mainWin!, { defaultPath: `${mix.showName}.qu32show.json`, filters: [{ name: "QU32 show", extensions: ["json"] }] });
+    if (r.canceled || !r.filePath) return false;
+    ShowStore.writeExternal(r.filePath, mix.toShow(mix.showName));
+    return true;
+  });
+  ipcMain.handle("hub:show:import", async () => {
+    const r = await dialog.showOpenDialog(mainWin!, { properties: ["openFile"], filters: [{ name: "QU32 show", extensions: ["json"] }] });
+    if (r.canceled || !r.filePaths[0]) return false;
+    mix.load(ShowStore.readExternal(r.filePaths[0]!));
+    applyShowToSlots();
+    await applyAudio();
+    return true;
   });
   ipcMain.handle("hub:copy", (_e, text: string) => { clipboard.writeText(String(text)); });
   ipcMain.handle("hub:openDataFolder", () => shell.openPath(path.join(app.getPath("userData"), "data")));
@@ -233,8 +302,15 @@ async function boot() {
   auth = new Auth(data);
   firstPassword = await auth.bootstrap(process.env.QU32_ENGINEER_PASSWORD);
   slots = new Slots(data, auth);
+  mix = new DigitalMix(data);
+  shows = new ShowStore(data);
+  mix.on("change", () => schedulePushMix());
   if (slots.count === 0 && process.env.QU32_SLOTS === undefined) slots.setCount(2);
   if (process.env.QU32_SLOTS) slots.setCount(Number(process.env.QU32_SLOTS));
+  if (process.env.QU32_PRESET) {
+    // test hook: {"1":[1,2],"2":[3]} assigns inputs to musicians at startup
+    for (const [slot, inputs] of Object.entries(JSON.parse(process.env.QU32_PRESET) as Record<string, number[]>)) for (const i of inputs) mix.assign(Number(slot), i, true);
+  }
   link = new QuLink({ host: settings.mixerHost, port: Number(process.env.QU32_MIXER_PORT ?? 51325), allowedModels: baseCfg.allowedModels });
   talkback = new Talkback(link, { strip: settings.talkStrip, level: settings.talkLevel, maxMs: 60_000 });
   talkback.onChange = (active) => { if (!active) void rpc("talk", { on: false }).catch(() => {}); };
@@ -251,6 +327,21 @@ async function boot() {
     const dump = process.env.QU32_DUMP;
     setInterval(async () => { try { const st = await uiState(); fs.writeFileSync(dump, JSON.stringify({ ...st, slots: st.slots.map((x) => ({ ...x, qr: x.qr ? "(png)" : "" })) }, null, 2)); } catch { /* ignore */ } }, 500);
     setTimeout(async () => { try { fs.writeFileSync(dump + ".png", (await mainWin!.webContents.capturePage()).toPNG()); } catch { /* ignore */ } }, Number(process.env.QU32_SHOT_MS ?? 6000));
+  }
+  if (process.env.QU32_SELFTEST_TALK) {
+    // test hook: N seconds after boot, hold talkback to monitor 1 (personal mix) for 8 s using the PC microphone
+    setTimeout(async () => {
+      try {
+        const d = await rpc<{ inputs: { id: string }[] }>("devices", {}, 20_000);
+        settings.micId = d.inputs[0]?.id ?? "";
+        await applyAudio();
+        fs.writeFileSync(process.env.QU32_SELFTEST_TALK + ".start", String(Date.now()));
+        await rpc("talk", { on: true, digital: [1], desk: false });
+        await new Promise((x) => setTimeout(x, 8000));
+        await rpc("talk", { on: false });
+        fs.writeFileSync(process.env.QU32_SELFTEST_TALK + ".end", String(Date.now()));
+      } catch (e) { fs.writeFileSync(process.env.QU32_SELFTEST_TALK + ".err", (e as Error).message); }
+    }, Number(process.env.QU32_SELFTEST_TALK_AT ?? 25) * 1000);
   }
   if (process.env.QU32_SELFTEST) {
     const out = process.env.QU32_SELFTEST;
@@ -284,6 +375,7 @@ async function boot() {
 
 // Fail-safe: talkback sends are zeroed whenever the hub quits.
 async function shutdown() {
+  try { mix?.flush(); } catch { /* ignore */ }
   try { talkback?.stop(); } catch { /* ignore */ }
   await new Promise((r) => setTimeout(r, 200));
   try { link?.stop(); } catch { /* ignore */ }
