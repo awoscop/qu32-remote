@@ -14,6 +14,7 @@ Permissions are enforced on the gateway from the account (role + assigned bus). 
 |---|---|
 | `sdk/` | `@qu32/sdk`: client SDK + Qu MIDI protocol library (built from the official V1.9 protocol PDF) |
 | `gateway/` | Node.js HTTPS gateway, accounts, policy, audit log, simulated Qu-32 for tests |
+| `hub/` | **QU32 Hub**: Windows desktop app. Runs the gateway, QR phone monitors, USB audio streaming, talkback |
 | `mobile/` | Expo / React Native app (engineer + musician UIs) |
 | `dist-packages/` | Built `qu32-sdk-0.1.0.tgz` (install anywhere with `npm install ./qu32-sdk-0.1.0.tgz`) |
 
@@ -25,7 +26,26 @@ Permissions are enforced on the gateway from the account (role + assigned bus). 
   in `docs/QU32-REMOTE-DESIGN.md` section 12 with the PA muted before any live use.
 - Not implemented: meters, RTA, patching, graphical EQ, WebSocket push (state is polled ~0.7 s, revision-checked).
 
-## 1. Run the gateway
+## 0. QU32 Hub: QR phone monitors with live audio and talkback (recommended)
+
+Run **QU32 Hub** on a PC connected to the Qu-32 by Ethernet **and** USB-B. Musicians scan a QR code and get their own mix,
+audio and faders in the phone browser: no app, no password. Details: [docs/MONITOR-AUDIO-DESIGN.md](docs/MONITOR-AUDIO-DESIGN.md).
+
+```bash
+cd hub && npm install && npm run dist      # builds hub/release/win-unpacked/QU32 Hub.exe
+npm start                                   # or run from source
+```
+
+1. Start the Hub, enter the Qu-32 IP, press **Connect**.
+2. On the desk route each monitor mix to USB (Mix 1-4 to USB 1-4, Mix 5-6 to 5-6, 7-8 to 7-8, 9-10 to 9-10, or change the USB channel per monitor in the Hub).
+3. Pick the Qu-32 USB input under **Audio**, press **Apply**. Choose the number of monitors. Each card has a QR code.
+4. Musicians join the same Wi-Fi (use a dedicated access point), scan their QR code, tap **Start listening**.
+5. Talkback: set a mic and the Qu-32 USB return in **Audio**, set up one spare desk channel as described in the Hub, select the monitors, hold the button (or Space).
+
+Musician pages are served over plain HTTP on port 8080 so no certificate warning appears; they carry no passwords and can only reach their
+own monitor mix. The engineer phone app uses HTTPS on 8443 as before.
+
+## 1. Run the gateway (headless, without the Hub)
 
 Requires Node.js 20+ and OpenSSL (Git for Windows includes it).
 

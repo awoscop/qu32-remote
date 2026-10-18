@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths: ["mobile/**", "sdk/**", ".github/workflows/qu32-android-apk.yml"]
     
 jobs:
   apk:

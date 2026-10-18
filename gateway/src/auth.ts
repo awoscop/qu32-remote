@@ -22,7 +22,9 @@ export class AuthError extends Error {
 /** Accounts on disk (scrypt hashes), sessions in memory (SHA-256 of token). */
 export class Auth {
   private accounts = new Map<string, Account>();
-  private sessions = new Map<string, { username: string; expires: number }>();
+  private sessions = new Map<string, { username: string; expires: number; virtual?: User }>();
+  /** Set by the slot store: is this virtual (QR) user still valid? */
+  virtualCheck: (username: string) => boolean = () => false;
   private failures = new Map<string, number[]>();
   private file: string;
 
@@ -79,8 +81,24 @@ export class Auth {
     return { user: Auth.pub(acct!), token };
   }
 
+  /** Source-IP throttle shared by password and QR-token attempts. */
+  blocked(ip: string): boolean {
+    return (this.failures.get(ip) ?? []).filter((t) => Date.now() - t < 600_000).length >= 10;
+  }
+  noteFailure(ip: string): void {
+    const now = Date.now();
+    this.failures.set(ip, [...(this.failures.get(ip) ?? []).filter((t) => now - t < 600_000), now]);
+  }
+
   private static digest = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
   private static pub = (a: Account): User => ({ username: a.username, role: a.role, busIndex: a.busIndex, enabled: a.enabled });
+
+  /** Open a session for a QR slot user (no password; the QR token was the credential). */
+  openVirtualSession(user: User, ttlMs = 12 * 3600_000): string {
+    const token = crypto.randomBytes(32).toString("base64url");
+    this.sessions.set(Auth.digest(token), { username: user.username, expires: Date.now() + ttlMs, virtual: user });
+    return token;
+  }
 
   /** Resolve a bearer token to a live, enabled user (or null). */
   verify(token: string | null | undefined): User | null {
@@ -88,6 +106,10 @@ export class Auth {
     const k = Auth.digest(token);
     const s = this.sessions.get(k);
     if (!s) return null;
+    if (s.virtual) {
+      if (s.expires < Date.now() || !this.virtualCheck(s.username)) { this.sessions.delete(k); return null; }
+      return s.virtual;
+    }
     const a = this.accounts.get(s.username);
     if (s.expires < Date.now() || !a || !a.enabled) { this.sessions.delete(k); return null; }
     return Auth.pub(a);

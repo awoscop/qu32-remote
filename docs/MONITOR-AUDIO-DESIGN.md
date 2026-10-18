@@ -4,7 +4,9 @@ Goal: each instrumentalist scans a QR code with their phone camera and, with **n
 monitor mix and controls it. The engineer picks how many monitors, and can talk to any mix. Everything runs from
 one PC connected to the Qu-32 by USB-B and Ethernet.
 
-Status: design only. Builds on the existing `sdk/`, `gateway/`, `mobile/` (control side is already built and simulator-tested).
+Status: **Phases 1-5 built** (QR slots + web page, Hub desktop app, audio streaming, talkback) and verified against a simulated Qu-32 with fake audio devices
+(WebRTC audio reaches a browser, talkback raises and releases the right desk sends). **Not yet verified on a real Qu-32:** multichannel USB capture on Windows (section 6), real
+latency, iPhone Safari behaviour, and the talkback return path. Builds on the existing `sdk/`, `gateway/`, `mobile/` (control side is already built and simulator-tested).
 
 ---
 

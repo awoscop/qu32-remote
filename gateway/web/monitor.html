@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1421">
+<title>My Monitor</title>
+<style>
+  :root { --bg:#0B1421; --surface:#172738; --border:#33485A; --text:#EAF3FA; --muted:#93AABF; --accent:#42DBC2; --accent-dim:#1E6F63; --danger:#D35D65; --warn:#E0A23C; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  body { padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); max-width: 640px; margin: 0 auto; }
+  header { display:flex; align-items:center; gap:10px; padding:6px 0 12px; border-bottom:1px solid var(--border); }
+  h1 { font-size:18px; margin:0; letter-spacing:.5px; }
+  .pill { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); text-align:right; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--warn); flex:none; }
+  .ok .dot { background:var(--accent); } .bad .dot { background:var(--danger); }
+  .sub { color:var(--muted); font-size:13px; margin:8px 0 14px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+  h2 { font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin:16px 0 8px; font-weight:600; }
+  .row { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+  .row:last-child { border-bottom:0; }
+  .head { display:flex; justify-content:space-between; gap:8px; font-size:16px; }
+  .val { color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px; white-space:nowrap; }
+  input[type=range] { width:100%; height:44px; margin:2px 0; background:transparent; accent-color:var(--accent); }
+  input[type=range]:disabled { opacity:.4; }
+  button { font:inherit; min-height:48px; border-radius:12px; border:1px solid var(--border); background:transparent; color:var(--text); padding:0 16px; font-weight:700; width:100%; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+  button.muted-on { background:var(--danger); border-color:var(--danger); }
+  button:disabled { opacity:.4; }
+  .note { color:var(--muted); font-size:12px; margin-top:8px; }
+  #full { display:none; text-align:center; padding:48px 8px; } #full h2 { color:var(--danger); font-size:16px; }
+  .meter { height:6px; border-radius:3px; background:var(--border); overflow:hidden; margin-top:8px; } .meter i { display:block; height:100%; width:0; background:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">My Monitor</h1>
+  <div class="pill" id="pill" role="status" aria-live="polite"><span class="dot"></span><span id="pilltext">Connecting...</span></div>
+</header>
+
+<div id="full"><h2 id="fulltext">This QR code is no longer valid.</h2><p class="sub">Ask the sound engineer for a new one.</p></div>
+
+<main id="main" hidden>
+  <p class="sub" id="sub"></p>
+
+  <div class="card" id="audiocard">
+    <button class="primary" id="listen">Start listening</button>
+    <div class="meter" id="meterwrap" hidden><i id="meter"></i></div>
+    <div class="note" id="audionote">Plug in your earbuds, then tap to hear your mix.</div>
+    <audio id="player" playsinline autoplay></audio>
+  </div>
+
+  <h2>Monitor master</h2>
+  <div class="card">
+    <div id="master"></div>
+    <button id="mute" style="margin-top:8px">Mute monitor</button>
+    <div class="note">This is your whole monitor output.</div>
+  </div>
+
+  <h2>My mix</h2>
+  <div class="card" id="sources"><div class="note">Waiting for the console...</div></div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const token = location.pathname.split("/").pop();
+  let session = null, slot = null, rev = -1, state = null, ready = false, polling = false;
+
+  // Fader law: official Qu table points (raw 0..127 -> dB). Same table as @qu32/sdk.
+  const PTS = [[0,-Infinity],[12,-45],[16,-40],[23,-35],[31,-30],[39,-25],[47,-20],[54,-15],[63,-10],[79,-5],[98,0],[114,5],[127,10]];
+  function db(raw) {
+    if (raw <= 0) return "-inf";
+    for (let i = 1; i < PTS.length; i++) {
+      const [r1, d1] = PTS[i], [r0, d0] = PTS[i - 1];
+      if (raw <= r1) { const lo = isFinite(d0) ? d0 : -60; const v = raw === r1 ? d1 : lo + (raw - r0) / (r1 - r0) * (d1 - lo); const r = Math.round(v * 10) / 10; return (r > 0 ? "+" : "") + r.toFixed(1) + " dB"; }
+    }
+    return "+10.0 dB";
+  }
+  const pan = (v) => v === 37 ? "C" : v < 37 ? "L" + Math.round((37 - v) / 37 * 100) : "R" + Math.round((v - 37) / 37 * 100);
+  const $ = (id) => document.getElementById(id);
+  const setPill = (cls, text) => { $("pill").className = "pill " + cls; $("pilltext").textContent = text; };
+
+  async function api(method, path, body, retry = true) {
+    const r = await fetch(path, {
+      method, cache: "no-store",
+      headers: Object.assign({ "X-Qu-Client": "qu32-web" }, body ? { "Content-Type": "application/json" } : {}, session ? { Authorization: "Bearer " + session } : {}),
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (r.status === 401 && retry && path !== "/api/join") { if (await join()) return api(method, path, body, false); }
+    let data = null; try { data = await r.json(); } catch (e) {}
+    if (!r.ok) { const e = new Error((data && data.error) || "HTTP " + r.status); e.status = r.status; throw e; }
+    return data;
+  }
+
+  async function join() {
+    try {
+      const r = await api("POST", "/api/join", { token }, false);
+      session = r.token; slot = r.slot; rev = -1;
+      $("title").textContent = slot.name || slot.busName;
+      $("sub").textContent = slot.busName + (slot.stereo ? " (stereo)" : " (mono)") + " · assigned by the sound engineer. Other mixes are locked.";
+      document.title = (slot.name || slot.busName) + " - Monitor";
+      return true;
+    } catch (e) {
+      if (e.status === 401 || e.status === 429) { revoked(e.message); return false; }
+      throw e;
+    }
+  }
+  function revoked(msg) {
+    stopAudio(true); polling = false;
+    $("main").hidden = true; $("full").style.display = "block"; $("fulltext").textContent = msg || "This QR code is no longer valid.";
+    setPill("bad", "Disconnected");
+  }
+
+  // ---------- controls
+  const sendTimers = new Map();
+  function sendThrottled(key, cmd) {
+    let t = sendTimers.get(key);
+    if (!t) { t = { last: 0, timer: null, cmd }; sendTimers.set(key, t); }
+    t.cmd = cmd;
+    if (t.timer) return;
+    t.timer = setTimeout(() => { t.timer = null; t.last = Date.now(); api("POST", "/api/command", t.cmd).catch(showErr); }, Math.max(0, t.last + 40 - Date.now()));
+  }
+  function showErr(e) { $("audionote").textContent = e.message; }
+
+  const controls = new Map(); // key -> {input, val, fmt, dragging}
+  function makeSlider(parent, key, label, max, fmt, onInput, onFinal) {
+    const row = document.createElement("div"); row.className = "row";
+    const head = document.createElement("div"); head.className = "head";
+    const l = document.createElement("span"); l.textContent = label;
+    const v = document.createElement("span"); v.className = "val"; v.textContent = "--";
+    head.append(l, v);
+    const inp = document.createElement("input"); inp.type = "range"; inp.min = 0; inp.max = max; inp.step = 1; inp.disabled = true;
+    inp.setAttribute("aria-label", label);
+    const c = { input: inp, val: v, fmt, label: l, dragging: false };
+    inp.addEventListener("pointerdown", () => { c.dragging = true; });
+    const end = () => { setTimeout(() => { c.dragging = false; }, 600); };
+    inp.addEventListener("pointerup", end); inp.addEventListener("pointercancel", end);
+    inp.addEventListener("input", () => { v.textContent = fmt(+inp.value); onInput(+inp.value); });
+    inp.addEventListener("change", () => { onFinal(+inp.value); });
+    row.append(head, inp); parent.append(row);
+    controls.set(key, c);
+    return c;
+  }
+
+  let builtFor = "";
+  function build() {
+    const m = state.mixer, bus = slot.busIndex, stereo = slot.stereo;
+    const masterAddr = 0x60 + bus;
+    const rank = (a) => (a >= 0x20 && a <= 0x42 ? 0 : 1);
+    const sources = m.strips.filter((s) => s.address !== masterAddr).sort((a, b) => rank(a.address) - rank(b.address) || a.address - b.address);
+    const sig = sources.map((s) => s.address).join(",") + "|" + bus;
+    if (sig === builtFor) return;
+    builtFor = sig; controls.clear();
+    $("master").textContent = "";
+    makeSlider($("master"), "master", "Output level", 127, db,
+      (v) => sendThrottled("master", { operation: "monitorMasterFader", busIndex: bus, value: v }),
+      (v) => api("POST", "/api/command", { operation: "monitorMasterFader", busIndex: bus, value: v }).catch(showErr));
+    const box = $("sources"); box.textContent = "";
+    if (!sources.length) { const n = document.createElement("div"); n.className = "note"; n.textContent = "Waiting for the console..."; box.append(n); }
+    for (const s of sources) {
+      makeSlider(box, "s" + s.address, s.label, 127, db,
+        (v) => sendThrottled("s" + s.address, { operation: "sendLevel", address: s.address, busIndex: bus, value: v }),
+        (v) => api("POST", "/api/command", { operation: "sendLevel", address: s.address, busIndex: bus, value: v }).catch(showErr));
+      if (stereo) makeSlider(box, "p" + s.address, "Pan", 74, pan,
+        (v) => sendThrottled("p" + s.address, { operation: "sendPan", address: s.address, busIndex: bus, value: v }),
+        (v) => api("POST", "/api/command", { operation: "sendPan", address: s.address, busIndex: bus, value: v }).catch(showErr));
+    }
+  }
+
+  function render() {
+    const m = state.mixer, bus = slot.busIndex, masterAddr = 0x60 + bus;
+    if (state.slot && state.slot.name) { $("title").textContent = state.slot.name; slot.name = state.slot.name; }
+    build();
+    ready = m.phase === "ready";
+    setPill(ready ? "ok" : "", ready ? "Mixer online" : m.phase === "offline" || m.phase === "error" ? "Console offline. Controls locked." : m.message);
+    const set = (key, raw) => {
+      const c = controls.get(key); if (!c) return;
+      c.input.disabled = !ready || raw === undefined;
+      if (raw !== undefined && !c.dragging) { c.input.value = raw; c.val.textContent = c.fmt(raw); }
+    };
+    const mst = m.strips.find((s) => s.address === masterAddr);
+    set("master", mst && mst.fader != null ? mst.fader : undefined);
+    const mb = $("mute"); mb.disabled = !ready || !mst || mst.muted == null;
+    mb.classList.toggle("muted-on", !!(mst && mst.muted)); mb.textContent = mst && mst.muted ? "MONITOR MUTED (tap to unmute)" : "Mute monitor";
+    mb.setAttribute("aria-pressed", String(!!(mst && mst.muted)));
+    for (const s of m.strips) {
+      if (s.address === masterAddr) continue;
+      set("s" + s.address, m.params[s.address + ":32:" + bus]);
+      set("p" + s.address, m.params[s.address + ":22:" + bus]);
+    }
+  }
+  $("mute").addEventListener("click", () => {
+    const mst = state.mixer.strips.find((s) => s.address === 0x60 + slot.busIndex);
+    api("POST", "/api/command", { operation: "monitorMasterMute", busIndex: slot.busIndex, muted: !(mst && mst.muted) }).catch(showErr);
+  });
+
+  async function poll() {
+    if (polling) return; polling = true;
+    while (polling) {
+      try {
+        const r = await api("GET", "/api/state?since=" + rev);
+        if (!r.unchanged) { state = r; rev = r.rev; render(); }
+        else if (state) { /* still online */ }
+      } catch (e) {
+        if (e.status === 401) { revoked(); return; }
+        setPill("bad", "Gateway unreachable. Controls locked.");
+        for (const c of controls.values()) c.input.disabled = true;
+      }
+      await new Promise((r) => setTimeout(r, 700));
+    }
+  }
+
+  // ---------- audio (WebRTC, receive only)
+  let pc = null, wantAudio = false, retryTimer = null, meterTimer = null;
+  const note = (t) => { $("audionote").textContent = t; };
+  async function startAudio() {
+    wantAudio = true;
+    if (!window.RTCPeerConnection) { note("This browser cannot play live audio."); return; }
+    $("listen").disabled = true; note("Connecting audio...");
+    try {
+      closePc();
+      pc = new RTCPeerConnection({ iceServers: [] });
+      pc.addTransceiver("audio", { direction: "recvonly" });
+      pc.ontrack = (ev) => {
+        const p = $("player"); p.srcObject = ev.streams[0] || new MediaStream([ev.track]);
+        try { ev.receiver.jitterBufferTarget = 20; } catch (e) {}
+        try { ev.receiver.playoutDelayHint = 0; } catch (e) {}
+        p.play().catch(() => note("Tap 'Start listening' again to allow audio."));
+      };
+      pc.onconnectionstatechange = () => {
+        const s = pc && pc.connectionState;
+        if (s === "connected") { note("Listening. Keep this page open and the screen on."); $("listen").textContent = "Listening (tap to restart)"; $("listen").disabled = false; startMeter(); }
+        if ((s === "failed" || s === "disconnected") && wantAudio) { note("Audio dropped. Reconnecting..."); scheduleRetry(); }
+      };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await new Promise((res) => { if (pc.iceGatheringState === "complete") return res(); const t = setTimeout(res, 2500); pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === "complete") { clearTimeout(t); res(); } }; });
+      const r = await api("POST", "/api/audio/offer", { sdp: pc.localDescription.sdp });
+      await pc.setRemoteDescription({ type: "answer", sdp: r.sdp });
+      requestWake();
+    } catch (e) {
+      note(e.status === 501 ? "Live audio is not enabled on this gateway. You can still control your mix." : "Audio unavailable: " + e.message);
+      $("listen").disabled = false; if (e.status !== 501 && wantAudio) scheduleRetry(4000);
+    }
+  }
+  function scheduleRetry(ms = 1500) { clearTimeout(retryTimer); retryTimer = setTimeout(() => { if (wantAudio) startAudio(); }, ms); }
+  function closePc() { clearInterval(meterTimer); if (pc) { try { pc.close(); } catch (e) {} pc = null; } }
+  function stopAudio(silent) { wantAudio = false; clearTimeout(retryTimer); closePc(); if (!silent) api("POST", "/api/audio/hangup", {}).catch(() => {}); }
+  function startMeter() {
+    clearInterval(meterTimer); $("meterwrap").hidden = false;
+    meterTimer = setInterval(async () => {
+      if (!pc) return;
+      try { const st = await pc.getStats(); st.forEach((r) => { if (r.type === "inbound-rtp" && r.kind === "audio" && typeof r.audioLevel === "number") $("meter").style.width = Math.min(100, Math.round(Math.sqrt(r.audioLevel) * 100)) + "%"; }); } catch (e) {}
+    }, 150);
+  }
+  let wake = null;
+  async function requestWake() { try { if ("wakeLock" in navigator) wake = await navigator.wakeLock.request("screen"); } catch (e) {} }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (wantAudio) requestWake(); } });
+  $("listen").addEventListener("click", startAudio);
+
+  (async () => {
+    try {
+      if (!(await join())) return;
+      $("main").hidden = false; setPill("", "Connecting...");
+      poll();
+    } catch (e) { setPill("bad", "Gateway unreachable"); setTimeout(() => location.reload(), 4000); }
+  })();
+})();
+</script>
+</body>
+</html>

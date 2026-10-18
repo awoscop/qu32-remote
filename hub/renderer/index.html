@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QU32 Hub</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">QU32 <span>HUB</span></div>
+  <div id="consolePill" class="pill"><i class="dot"></i><span>Starting...</span></div>
+  <div class="spacer"></div>
+  <label class="inline">Network address
+    <select id="lanIp" aria-label="Network address used in QR codes"></select>
+  </label>
+</header>
+
+<main>
+  <section id="errors" class="banner err" hidden></section>
+  <section id="firstPw" class="banner" hidden>
+    <b>Engineer login for the phone app</b> (shown once):
+    <code id="firstPwText"></code>
+    <span class="muted">Username <code>engineer</code> at <code id="httpsText"></code></span>
+    <button id="firstPwOk" class="small">I saved it</button>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Console</h2>
+      <div class="row">
+        <input id="mixerIp" placeholder="Qu-32 IP, e.g. 192.168.1.60" inputmode="decimal" aria-label="Qu-32 IP address">
+        <button id="mixerConnect" class="primary">Connect</button>
+      </div>
+      <p id="mixerMsg" class="muted"></p>
+      <p class="muted">Find the desk's IP under Setup &gt; Control &gt; Network. It must differ from this PC's address.</p>
+    </section>
+
+    <section class="card">
+      <h2>Audio</h2>
+      <label>Qu-32 USB input
+        <select id="usbIn"></select>
+      </label>
+      <label>Talkback output (Qu-32 USB return)
+        <select id="usbOut"></select>
+      </label>
+      <label>Talkback microphone
+        <select id="mic"></select>
+      </label>
+      <div class="row">
+        <label class="inline">USB return channel <input id="retCh" type="number" min="1" max="32" value="32"></label>
+        <button id="audioApply" class="primary">Apply</button>
+        <button id="audioRefresh" class="small">Refresh devices</button>
+      </div>
+      <p id="audioMsg" class="muted"></p>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="row between">
+      <h2>Monitors</h2>
+      <div class="row">
+        <span class="muted">Number of monitors</span>
+        <button id="minus" class="small" aria-label="Fewer monitors">&minus;</button>
+        <b id="count" class="count">0</b>
+        <button id="plus" class="small" aria-label="More monitors">+</button>
+      </div>
+    </div>
+    <p class="muted">Each person scans their own QR code with the phone camera. No app install, no password. Monitor 1 is Mix 1 on the desk, and so on.
+      Route each mix to USB on the desk, then set the first USB channel per monitor below.</p>
+    <div id="slots" class="slots"></div>
+    <p id="noSlots" class="muted" hidden>Choose how many monitors you need.</p>
+  </section>
+
+  <section class="card">
+    <h2>Talkback</h2>
+    <div class="row">
+      <label class="inline">Desk input channel <select id="tbStrip"></select></label>
+      <label class="inline">Level <select id="tbLevel"></select></label>
+    </div>
+    <div id="tbBuses" class="chips" aria-label="Talk to these monitors"></div>
+    <div class="row">
+      <button id="talk" class="talk" disabled>Hold to talk</button>
+      <span id="talkMsg" class="muted">Hold the button (or the space bar). Release to stop. Never stays on longer than 60 seconds.</span>
+    </div>
+    <details>
+      <summary>One-time desk setup for talkback</summary>
+      <ol class="muted">
+        <li>Pick a spare input channel (default CH 32). Set its input source to USB and its USB channel to the same number as "USB return channel" above.</li>
+        <li>Unmute it, fader at 0 dB, and switch off its LR assignment so talkback never reaches the main mix.</li>
+        <li>Leave its sends at minus infinity. This app raises them only to the selected mixes while you hold the button, and sets them back to minus infinity on release.</li>
+        <li>Do not use that channel for anything else: release always resets all of its monitor sends.</li>
+      </ol>
+    </details>
+  </section>
+
+  <footer>
+    <button id="resetPw" class="small">Reset engineer password</button>
+    <button id="openData" class="small">Open data folder</button>
+    <span class="muted" id="urls"></span>
+  </footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

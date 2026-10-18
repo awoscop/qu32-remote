@@ -5,3 +5,7 @@ dist/
 mobile/.expo/
 mobile/android/
 mobile/ios/
+
+hub/web/
+hub/release/
+release/

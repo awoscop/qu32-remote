@@ -10,6 +10,8 @@ export interface Config {
   lanIp: string;
   /** Plain HTTP. For local development and automated tests only. */
   insecureHttp: boolean;
+  /** HTTP listener for QR musicians only: no passwords, no engineer sessions, no admin routes. */
+  musicianOnly: boolean;
   /** Qu box ids accepted in the System State reply (3 = Qu-32). */
   allowedModels: number[];
   openssl: string;
@@ -31,6 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     mixerPort: Number(env.QU32_MIXER_PORT ?? 51325),
     lanIp: env.QU32_LAN_IP ?? detectLanIp(),
     insecureHttp: env.QU32_INSECURE_HTTP === "1",
+    musicianOnly: false,
     allowedModels: (env.QU32_ALLOWED_MODELS ?? "3").split(",").map(Number),
     openssl: env.QU32_OPENSSL ?? "openssl",
   };
